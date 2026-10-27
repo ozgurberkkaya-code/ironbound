@@ -1,591 +1,331 @@
 <!doctype html>
-<html lang="tr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#171b18">
-  <title>IRONBOUND — Zırhlı Çatışma</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-
-    :root {
-      color-scheme: dark;
-      --ink: #171b18;
-      --paper: #e7e2d2;
-      --muted: #a8a99d;
-      --signal: #d6ef67;
-      --rust: #d8794c;
-      --line: rgba(231, 226, 210, .19);
-      font-family: "DM Mono", monospace;
-    }
-
-    * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--ink); }
-    body { color: var(--paper); }
-    button { font: inherit; }
-
-    #game { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
-    .grain {
-      position: fixed; inset: 0; pointer-events: none; opacity: .15; z-index: 2;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.87' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.23'/%3E%3C/svg%3E");
-    }
-
-    .topbar {
-      position: fixed; z-index: 3; inset: 0 0 auto; height: 76px; padding: 0 34px;
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(17,20,18,.88), rgba(17,20,18,.22));
-    }
-    .brand { display: flex; gap: 13px; align-items: center; }
-    .brand-mark { width: 34px; height: 34px; border: 1px solid var(--signal); display: grid; place-items: center; color: var(--signal); font: 800 21px "Barlow Condensed", sans-serif; transform: rotate(45deg); }
-    .brand-mark span { transform: rotate(-45deg); }
-    .brand-name { font: 800 23px/.85 "Barlow Condensed", sans-serif; letter-spacing: .06em; }
-    .brand-name small { display: block; margin-top: 6px; color: var(--muted); font: 10px "DM Mono", monospace; letter-spacing: .18em; }
-    .mission-tag { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: .12em; color: var(--muted); }
-    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 13px var(--signal); }
-    .icon-button {
-      width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); color: var(--paper); background: rgba(23,27,24,.7); cursor: pointer;
-      display: grid; place-items: center; transition: border-color .18s, color .18s;
-    }
-    .icon-button:hover { border-color: var(--signal); color: var(--signal); }
-
-    .mission-info { position: fixed; z-index: 3; left: 34px; top: 110px; width: 230px; pointer-events: none; }
-    .eyebrow { color: var(--signal); font-size: 9px; letter-spacing: .18em; }
-    .mission-info h1 { margin: 7px 0 3px; font: 800 30px/.95 "Barlow Condensed", sans-serif; letter-spacing: .02em; }
-    .mission-info p { color: var(--muted); font-size: 10px; line-height: 1.7; margin: 0; }
-
-    .hud {
-      position: fixed; z-index: 3; left: 34px; bottom: 27px; display: flex; gap: 28px; align-items: end;
-      padding: 13px 17px; border-top: 1px solid var(--line); background: rgba(23,27,24,.75); backdrop-filter: blur(8px);
-    }
-    .stat { min-width: 87px; }
-    .stat-label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .14em; margin-bottom: 7px; }
-    .stat-value { font: 700 19px "Barlow Condensed", sans-serif; letter-spacing: .04em; }
-    .health-track { width: 118px; height: 4px; margin-top: 6px; background: rgba(231,226,210,.18); }
-    .health-fill { height: 100%; width: 100%; background: var(--signal); transition: width .2s; }
-    .ammo-value { color: var(--signal); }
-
-    .objective {
-      position: fixed; z-index: 3; top: 102px; right: 34px; width: 190px; padding: 12px 0 13px 14px;
-      border-left: 1px solid var(--signal); background: linear-gradient(90deg, rgba(23,27,24,.7), transparent); pointer-events: none;
-    }
-    .objective-title { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px; letter-spacing: .12em; }
-    .objective-title strong { color: var(--signal); font-weight: 500; }
-    .objective h2 { margin: 8px 0 5px; font: 700 17px "Barlow Condensed", sans-serif; letter-spacing: .04em; }
-    .capture-track { height: 3px; margin-top: 9px; background: rgba(231,226,210,.2); }
-    .capture-fill { height: 100%; width: 0; background: var(--signal); transition: width .2s; }
-
-    .reticle {
-      position: fixed; z-index: 3; left: 50%; top: 50%; width: 28px; height: 28px; pointer-events: none;
-      transform: translate(-50%,-50%); opacity: .85;
-    }
-    .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(231,226,210,.78); }
-    .reticle::before { width: 1px; height: 28px; left: 13px; }
-    .reticle::after { height: 1px; width: 28px; top: 13px; }
-    .reticle i { position: absolute; width: 4px; height: 4px; left: 12px; top: 12px; border: 1px solid var(--signal); border-radius: 50%; }
-
-    .toast { position: fixed; z-index: 4; left: 50%; top: 90px; transform: translate(-50%,-8px); opacity: 0; color: var(--signal); font-size: 10px; letter-spacing: .14em; transition: opacity .2s, transform .2s; pointer-events: none; }
-    .toast.show { opacity: 1; transform: translate(-50%,0); }
-
-    .overlay {
-      position: fixed; z-index: 6; inset: 0; display: grid; place-items: center; padding: 24px;
-      background: rgba(13,16,14,.58); backdrop-filter: blur(5px); transition: opacity .25s, visibility .25s;
-    }
-    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .briefing { position: relative; width: min(470px, 100%); padding: 34px 38px 30px; background: #202520; border: 1px solid rgba(231,226,210,.24); box-shadow: 12px 12px 0 rgba(0,0,0,.25); }
-    .briefing::before { content: ""; position: absolute; top: -1px; left: -1px; width: 62px; height: 3px; background: var(--signal); }
-    .briefing .eyebrow { font-size: 10px; }
-    .briefing h2 { margin: 11px 0 10px; font: 900 55px/.83 "Barlow Condensed", sans-serif; letter-spacing: .015em; }
-    .briefing h2 span { color: var(--signal); }
-    .briefing-copy { max-width: 350px; color: #b5b7aa; font-size: 11px; line-height: 1.8; }
-    .briefing-rule { height: 1px; background: var(--line); margin: 20px 0; }
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 20px; color: var(--muted); font-size: 10px; }
-    .control { display: flex; gap: 9px; align-items: center; }
-    kbd { min-width: 34px; padding: 5px 6px; border: 1px solid rgba(231,226,210,.22); color: var(--paper); text-align: center; font: 10px "DM Mono", monospace; }
-    .start-button { width: 100%; margin-top: 24px; padding: 14px; border: 0; color: var(--ink); background: var(--signal); font: 800 16px "Barlow Condensed", sans-serif; letter-spacing: .12em; cursor: pointer; transition: background .18s, transform .18s; }
-    .start-button:hover { background: #e7ff91; transform: translateY(-2px); }
-    .briefing-foot { display: flex; justify-content: space-between; margin-top: 14px; color: #777d71; font-size: 8px; letter-spacing: .1em; }
-
-    .touch-controls { display: none; position: fixed; z-index: 4; inset: auto 18px 20px; justify-content: space-between; align-items: end; pointer-events: none; }
-    .dpad { display: grid; grid-template: repeat(2, 47px) / repeat(3, 47px); gap: 4px; pointer-events: auto; }
-    .touch-button { border: 1px solid rgba(231,226,210,.38); color: var(--paper); background: rgba(23,27,24,.72); backdrop-filter: blur(5px); touch-action: none; }
-    .dpad .touch-button { font-size: 17px; }
-    .dpad [data-key="w"] { grid-area: 1 / 2; }
-    .dpad [data-key="a"] { grid-area: 2 / 1; }
-    .dpad [data-key="s"] { grid-area: 2 / 2; }
-    .dpad [data-key="d"] { grid-area: 2 / 3; }
-    .fire-button { width: 70px; height: 70px; border-color: var(--signal); border-radius: 50%; color: var(--signal); font: 800 13px "Barlow Condensed", sans-serif; pointer-events: auto; }
-    .touch-button.active { background: rgba(214,239,103,.25); }
-
-    @media (max-width: 700px) {
-      .topbar { height: 58px; padding: 0 17px; }
-      .brand-mark { width: 29px; height: 29px; }
-      .brand-name { font-size: 20px; }
-      .mission-tag { display: none; }
-      .mission-info { top: 77px; left: 17px; width: 170px; }
-      .mission-info h1 { font-size: 24px; }
-      .mission-info p { font-size: 9px; }
-      .objective { top: 76px; right: 16px; width: 152px; }
-      .objective h2 { font-size: 15px; }
-      .hud { left: 14px; bottom: 119px; gap: 14px; padding: 9px 10px; }
-      .stat { min-width: 65px; }
-      .stat-label { font-size: 8px; margin-bottom: 4px; }
-      .stat-value { font-size: 16px; }
-      .health-track { width: 76px; }
-      .touch-controls { display: flex; }
-      .reticle { display: none; }
-      .briefing { padding: 28px 24px 23px; }
-      .briefing h2 { font-size: 47px; }
-      .controls { gap: 10px; }
-      .toast { top: 65px; white-space: nowrap; }
-    }
-    @media (max-height: 560px) and (min-width: 701px) {
-      .topbar { height: 58px; }
-      .mission-info { top: 78px; }
-      .objective { top: 74px; }
-      .hud { bottom: 14px; }
-      .briefing { padding: 22px 28px 20px; }
-      .briefing h2 { font-size: 45px; }
-      .briefing-rule { margin: 12px 0; }
-      .start-button { margin-top: 15px; }
-    }
-  </style>
-</head>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#171b18">
+<title>IRONBOUND 3D — Zırhlı Çatışma</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=DM+Mono&display=swap">
+<style>
+:root{--ink:#171b18;--paper:#e7e2d2;--muted:#a8a99d;--signal:#d6ef67;--line:rgba(231,226,210,.2);color-scheme:dark;font-family:"DM Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#hud{z-index:2}
+.vig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,transparent 58%,rgba(8,10,8,.5))}
+.btns{position:fixed;z-index:3;top:calc(12px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));display:flex;gap:8px}
+.btns button{width:44px;height:44px;border:1px solid var(--line);background:rgba(23,27,24,.7);color:var(--paper);font:700 15px "DM Mono",monospace;cursor:pointer}
+.overlay{position:fixed;z-index:6;inset:0;display:grid;place-items:center;padding:16px;background:rgba(13,16,14,.62);backdrop-filter:blur(5px)}
+.overlay.hidden{display:none}
+.briefing{position:relative;width:min(500px,100%);max-height:100%;overflow:auto;padding:28px 32px 24px;background:#202520;border:1px solid rgba(231,226,210,.24);box-shadow:12px 12px 0 rgba(0,0,0,.25)}
+.briefing::before{content:"";position:absolute;top:-1px;left:-1px;width:62px;height:3px;background:var(--signal)}
+.eyebrow{color:var(--signal);font-size:10px;letter-spacing:.18em}
+h2{margin:10px 0;font:900 52px/.85 "Barlow Condensed",sans-serif}
+h2 span{color:var(--signal)}
+p{margin:0;color:#b5b7aa;font-size:11px;line-height:1.8}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:10px}
+.controls div{display:flex;gap:8px;align-items:center}
+kbd{min-width:40px;padding:5px 6px;border:1px solid rgba(231,226,210,.22);color:var(--paper);text-align:center;font:10px "DM Mono",monospace}
+.go{width:100%;margin-top:20px;padding:15px;border:0;color:var(--ink);background:var(--signal);font:800 17px "Barlow Condensed",sans-serif;letter-spacing:.12em;cursor:pointer}
+</style></head>
 <body>
-  <canvas id="game" aria-label="IRONBOUND tank çatışma alanı"></canvas>
-  <div class="grain"></div>
+<canvas id="gl"></canvas><div class="vig"></div><canvas id="hud"></canvas>
+<div class="btns"><button id="fs" title="Tam ekran">⛶</button><button id="pz" title="Duraklat">II</button></div>
+<div class="overlay" id="ov"><div class="briefing">
+<div class="eyebrow" id="eb">IRONBOUND 3D · SAHA RAPORU 06:40</div>
+<h2 id="t1">DEMİR<br><span>VADİSİ</span></h2>
+<p id="cp">Vadide düşman zırhlı devriyesi görüldü. Karakolu ele geçir ve bölgeyi temizle. Mürettebat hazır, komutan.</p>
+<div class="controls">
+<div><kbd>WASD</kbd>Tankı sür</div><div><kbd>FARE</kbd>Nişan al</div>
+<div><kbd>SPACE</kbd>Ateş et</div><div><kbd>R</kbd>Mühimmat doldur</div>
+<div><kbd>Z</kbd>Dürbün</div><div><kbd>ESC</kbd>Duraklat</div></div>
+<p style="margin-top:14px;font-size:10px">Tablet: cihazı yatay tut. Sol başparmakla sür, ekranın sağ yarısını kaydırarak nişan al, ATEŞ, DOLDUR ve ZOOM düğmelerini kullan.</p>
+<button class="go" id="go">GÖREVE BAŞLA &nbsp;→</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const T=THREE,$=s=>document.querySelector(s),glc=$('#gl'),hc=$('#hud'),hx=hc.getContext('2d'),
+coarse=matchMedia('(pointer:coarse)').matches||'ontouchstart' in window,
+HX=158,HZ=117,cl=(v,a,b)=>Math.max(a,Math.min(b,v)),lp=(a,b,t)=>a+(b-a)*t,wr=a=>Math.atan2(Math.sin(a),Math.cos(a)),ss=t=>(t=cl(t,0,1))*t*(3-2*t),
+rnd=(()=>{let s=4027;return()=>(s=(s*1664525+1013904223)>>>0)/4294967296})(),V=(a,b)=>a+rnd()*(b-a),
+rx=z=>14*Math.sin(z*.03+.75),
+hAt=(x,z)=>{const b=3.4*Math.sin(x*.022+1.3)*Math.cos(z*.018)+1.8*Math.sin(x*.05+z*.034)+1.1*Math.cos(z*.065-x*.02),
+f=ss((Math.hypot(x,z+25)-16)/30)*ss((Math.hypot(x,z-60)-10)/25);
+return b*f+(ss((Math.abs(x)-150)/50)+ss((Math.abs(z)-108)/40))*20*(.8+.2*Math.sin(x*.09+z*.11))};
+let SW=innerWidth,SH=innerHeight,dpr=Math.min(devicePixelRatio||1,2),pr=Math.min(devicePixelRatio||1,coarse?1.5:2);
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark"><span>I</span></div>
-      <div class="brand-name">IRONBOUND<small>ARMORED SKIRMISH</small></div>
-    </div>
-    <div class="mission-tag"><span class="live-dot"></span> SEKTÖR 04 <span>/</span> OPERASYON AKTİF</div>
-    <button class="icon-button" id="pause-button" aria-label="Oyunu duraklat" title="Duraklat / devam et">
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true"><path d="M5 3.5v10M12 3.5v10" stroke="currentColor" stroke-width="2"/></svg>
-    </button>
-  </header>
+/* ---------- Renderer, gökyüzü, ışık ---------- */
+const R=new T.WebGLRenderer({canvas:glc,antialias:!coarse});
+R.outputEncoding=T.sRGBEncoding;R.toneMapping=T.ACESFilmicToneMapping;R.toneMappingExposure=1.1;
+R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;
+const scene=new T.Scene(),cam=new T.PerspectiveCamera(60,1,.5,900),UP=new T.Vector3(0,1,0),
+tv=new T.Vector3(),mp=new T.Vector3(),md=new T.Vector3(),PV=new T.Vector3(),D=new T.Vector3(),
+sunDir=new T.Vector3(-.5,.55,-.65).normalize();
+scene.fog=new T.FogExp2(0xb4bda8,.0042);
+const sky=new T.Mesh(new T.SphereGeometry(600,24,12),new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{s:{value:sunDir}},
+vertexShader:'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+fragmentShader:'varying vec3 v;uniform vec3 s;void main(){float h=clamp(v.y,0.,1.);vec3 c=mix(vec3(.74,.77,.68),vec3(.22,.42,.70),pow(h,.55));float d=max(dot(normalize(v),s),0.);c+=vec3(1.,.8,.5)*(pow(d,48.)*.6+pow(d,600.)*2.);gl_FragColor=vec4(c,1.);}'}));
+sky.frustumCulled=false;sky.renderOrder=-1;scene.add(sky);
+scene.add(new T.HemisphereLight(0xcfe0ff,0x56583a,.7));
+const sun=new T.DirectionalLight(0xffe2b8,1.7),sm=coarse?1024:2048;scene.add(sun,sun.target);
+sun.castShadow=true;sun.shadow.mapSize.set(sm,sm);
+{const c=sun.shadow.camera;c.left=c.bottom=-55;c.right=c.top=55;c.near=1;c.far=260}
+sun.shadow.bias=-.0004;sun.shadow.normalBias=.4;
+const flash=new T.PointLight(0xffa850,0,45);scene.add(flash);let flashT=0;
 
-  <section class="mission-info" aria-label="Görev bilgisi">
-    <div class="eyebrow">SINIR HATTI / 04</div>
-    <h1>DEMİR VADİSİ</h1>
-    <p>Düşman zırhlılarını etkisiz hale getir. İleri karakolu ele geçir.</p>
-  </section>
+/* ---------- Arazi ---------- */
+const nc=document.createElement('canvas');nc.width=nc.height=128;
+{const c=nc.getContext('2d');c.fillStyle='#e0e0e0';c.fillRect(0,0,128,128);
+for(let i=0;i<1800;i++){const g=rnd()*255|0;c.fillStyle=`rgba(${g},${g},${g},.22)`;c.fillRect(rnd()*128,rnd()*128,2,2)}}
+const dt=new T.CanvasTexture(nc);dt.wrapS=dt.wrapT=T.RepeatWrapping;dt.repeat.set(110,90);dt.encoding=T.sRGBEncoding;dt.anisotropy=4;
+{const g=new T.PlaneGeometry(560,440,150,120);g.rotateX(-Math.PI/2);
+const p=g.attributes.position,col=new Float32Array(p.count*3),c=new T.Color(),
+A=new T.Color(.1,.14,.05),B=new T.Color(.21,.18,.08),Ro=new T.Color(.15,.14,.12),Rd=new T.Color(.26,.2,.11);
+for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i),y=hAt(x,z);p.setY(i,y);
+const sl=Math.abs(hAt(x+2,z)-y)+Math.abs(hAt(x,z+2)-y);
+c.copy(A).lerp(B,cl(.3+rnd()*.35+Math.sin(x*.07)*Math.cos(z*.06)*.3,0,1)).lerp(Ro,cl((sl-1.4)/2,0,1)).lerp(Rd,1-ss((Math.abs(x-rx(z))-3.5)/3));
+c.toArray(col,i*3)}
+g.setAttribute('color',new T.BufferAttribute(col,3));g.computeVertexNormals();
+const m=new T.Mesh(g,new T.MeshStandardMaterial({vertexColors:true,map:dt,roughness:1}));m.receiveShadow=true;scene.add(m)}
 
-  <section class="objective" aria-label="Hedef durumu">
-    <div class="objective-title"><span>ANA HEDEF</span><strong id="objective-state">BEKLEMEDE</strong></div>
-    <h2>İLERİ KARAKOLU TUT</h2>
-    <div class="objective-title"><span>İLERLEME</span><span id="capture-text">0%</span></div>
-    <div class="capture-track"><div class="capture-fill" id="capture-fill"></div></div>
-  </section>
+/* ---------- Engeller (ağaç, kaya, harabe) ---------- */
+const OB=[],dm=new T.Object3D();
+function inst(geo,mat,list){const m=new T.InstancedMesh(geo,mat,list.length);
+list.forEach((o,i)=>{dm.position.set(o.x,o.y,o.z);dm.rotation.set(o.rx||0,o.ry||0,o.rz||0);dm.scale.set(o.sx,o.sy,o.sz);dm.updateMatrix();m.setMatrixAt(i,dm.matrix)});
+m.castShadow=m.receiveShadow=true;m.frustumCulled=false;scene.add(m)}
+{const tr=[],rk=[],wl=[];
+for(let i=0;i<260&&OB.length<95;i++){const x=(rnd()-.5)*(2*HX-10),z=(rnd()-.5)*(2*HZ-10);
+if(Math.hypot(x,z-60)<24||Math.hypot(x,z+25)<28||Math.abs(x-rx(z))<7)continue;
+const t=rnd(),y=hAt(x,z);
+if(t<.5){const s=1+rnd()*.9;tr.push({x,y,z,sx:s,sy:s*(1+rnd()*.5),sz:s,ry:rnd()*6});OB.push({x,z,r:1.1*s,hh:9})}
+else if(t<.85){const s=1.6+rnd()*2.6;rk.push({x,y:y+s*.2,z,sx:s,sy:s*.7,sz:s*(.8+rnd()*.5),rx:rnd()*3,ry:rnd()*6,rz:rnd()});OB.push({x,z,r:s*.85,hh:s})}
+else{const a=rnd()*6;wl.push({x,y:y+1.5,z,sx:8,sy:3.6,sz:1.4,ry:a},{x:x+Math.sin(a)*3.4,y:y+1,z:z+Math.cos(a)*3.4,sx:3,sy:2.4,sz:3,ry:a});OB.push({x,z,r:4.6,hh:4})}}
+const L=(a,k)=>a.map(o=>({...o,y:o.y+k*o.sy}));
+inst(new T.CylinderGeometry(.22,.3,2,6),new T.MeshStandardMaterial({color:0x3a2a1a,roughness:1}),L(tr,1));
+inst(new T.ConeGeometry(1.9,3.6,8),new T.MeshStandardMaterial({color:0x1b3a1a,roughness:.9}),L(tr,2.4));
+inst(new T.ConeGeometry(1.4,3.2,8),new T.MeshStandardMaterial({color:0x234a20,roughness:.9}),L(tr,4.1));
+inst(new T.DodecahedronGeometry(1,0),new T.MeshStandardMaterial({color:0x4a4a44,roughness:.95,flatShading:true}),rk);
+inst(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({color:0x6a665a,roughness:.95}),wl)}
 
-  <div class="reticle"><i></i></div>
-  <div class="toast" id="toast" role="status"></div>
+/* ---------- Tank modeli ---------- */
+function mkTank(bc,tc,hv){
+const g=new T.Group(),M=(c,r,m)=>new T.MeshStandardMaterial({color:c,roughness:r,metalness:m}),
+body=M(bc,.75,.2),tur=M(tc,.7,.25),dk=M(0x15171a,.9,.1),mt=M(0x2b2e2c,.5,.6),
+ad=(p,geo,mat,x,y,z,rX=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.x=rX;m.castShadow=m.receiveShadow=true;p.add(m);return m},
+bx=(a,b,c)=>new T.BoxGeometry(a,b,c),wh=new T.CylinderGeometry(.5,.5,.9,12).rotateZ(Math.PI/2);
+ad(g,bx(3,1,5.8),body,0,1.2,-.1);ad(g,bx(2.9,.14,2.3),body,0,1.4,3.05,.45);ad(g,bx(2.6,.5,1.6),dk,0,1.85,-2.1);
+for(const s of[-1,1]){ad(g,bx(.75,1.05,6.9),dk,s*1.85,.62,0);ad(g,bx(.95,.1,7),body,s*1.85,1.22,0);
+for(let i=0;i<6;i++)ad(g,wh,mt,s*1.85,.55,-2.8+i*1.12)}
+const tp=new T.Group();tp.position.set(0,1.7,-.2);g.add(tp);
+ad(tp,bx(2.3,.9,2.7),tur,0,.45,0);ad(tp,bx(1.1,.75,.6),tur,0,.45,1.5);ad(tp,new T.CylinderGeometry(.45,.45,.35,10),tur,-.55,1,-.4);ad(tp,bx(.04,2.2,.04),dk,.9,1.4,-1);
+const gp=new T.Group();gp.position.set(0,.5,1.65);tp.add(gp);
+const bar=ad(gp,new T.CylinderGeometry(.14,.17,4.6,10).rotateX(Math.PI/2),mt,0,0,2.3);ad(bar,bx(.4,.4,.5),mt,0,0,2.35);
+const muz=new T.Object3D();muz.position.set(0,0,4.9);gp.add(muz);
+if(hv)g.scale.setScalar(1.15);
+const mats=[body,tur];mats.forEach(m=>m.userData.c=m.color.getHex());
+return{g,tp,gp,bar,muz,mats}}
 
-  <section class="hud" aria-label="Tank durumu">
-    <div class="stat"><span class="stat-label">GÖVDE</span><span class="stat-value" id="health-text">100%</span><div class="health-track"><div class="health-fill" id="health-fill"></div></div></div>
-    <div class="stat"><span class="stat-label">MÜHİMMAT</span><span class="stat-value ammo-value" id="ammo-text">06 / 06</span></div>
-    <div class="stat"><span class="stat-label">SKOR</span><span class="stat-value" id="score-text">000</span></div>
-  </section>
+/* ---------- Durum ---------- */
+const CP={x:0,z:-25,r:18},cap={p:0,done:0},E=[],dead=[],S=[],K={},IND=[],ptr=new Map(),
+cs={yaw:Math.PI,pitch:.12,zoom:0},js={x:0,y:0,cx:0,cy:0,on:0,id:-1},JR=64,
+SP=[[-74,-54,'s'],[66,-65,'heavy'],[102,17,'s'],[-88,36,'s'],[48,87,'heavy']],
+P={t:mkTank(0x3a3e22,0x4a4f2c,0),x:0,z:60,h:Math.PI,ty:Math.PI,ge:0,sp:0,hp:100,am:6,rl:0,cd:0,inv:0,rec:0,dd:0},
+toast={t:0,s:''};
+let run=0,paused=0,ended=0,score=0,shake=0,hurt=0,DT=0,touchF=0,mouseF=0,zoomOn=0;
+scene.add(P.t.g);
 
-  <div class="touch-controls" aria-label="Dokunmatik tank kontrolleri">
-    <div class="dpad">
-      <button class="touch-button" data-key="w" aria-label="İleri">↑</button>
-      <button class="touch-button" data-key="a" aria-label="Sola dön">←</button>
-      <button class="touch-button" data-key="s" aria-label="Geri">↓</button>
-      <button class="touch-button" data-key="d" aria-label="Sağa dön">→</button>
-    </div>
-    <button class="touch-button fire-button" id="fire-button" aria-label="Ateş et">ATEŞ</button>
-  </div>
+/* arazi + kaynak noktası */
+const cm=new T.MeshBasicMaterial({color:0xd6ef67,transparent:true,opacity:.7,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,fog:false});
+{const r=new T.Mesh(new T.RingGeometry(CP.r-.7,CP.r,64),cm);r.rotation.x=-Math.PI/2;r.position.set(CP.x,.3,CP.z);scene.add(r);
+const d=new T.Mesh(new T.CircleGeometry(CP.r,48),new T.MeshBasicMaterial({color:0xd6ef67,transparent:true,opacity:.08,blending:T.AdditiveBlending,depthWrite:false,fog:false}));d.rotation.x=-Math.PI/2;d.position.set(CP.x,.25,CP.z);scene.add(d);
+const b=new T.Mesh(new T.CylinderGeometry(.6,.6,40,12,1,true),cm);b.position.set(CP.x,20.3,CP.z);scene.add(b)}
 
-  <div class="overlay" id="overlay">
-    <div class="briefing">
-      <div class="eyebrow">SAHA RAPORU &nbsp;·&nbsp; 06:40</div>
-      <h2>DEMİR<br><span>VADİSİ</span></h2>
-      <p class="briefing-copy">Vadide düşman zırhlı devriyesi görüldü. Karakolu ele geçir ve bölgeyi temizle. Mürettebat hazır, komutan.</p>
-      <div class="briefing-rule"></div>
-      <div class="controls">
-        <div class="control"><kbd>WASD</kbd><span>Tankı sür</span></div>
-        <div class="control"><kbd>FARE</kbd><span>Nişan al</span></div>
-        <div class="control"><kbd>SPACE</kbd><span>Ateş et</span></div>
-        <div class="control"><kbd>R</kbd><span>Mühimmat doldur</span></div>
-      </div>
-      <button class="start-button" id="start-button">GÖREVE BAŞLA &nbsp; →</button>
-      <div class="briefing-foot"><span>IRONBOUND FIELD UNIT</span><span>BUILD 01.04</span></div>
-    </div>
-  </div>
+/* ---------- Parçacıklar ---------- */
+const ptex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);
+g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.4,'rgba(255,255,255,.5)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new T.CanvasTexture(c)})();
+const pool=[];let pi=0;
+for(let i=0;i<220;i++){const s=new T.Sprite(new T.SpriteMaterial({map:ptex,transparent:true,depthWrite:false}));s.visible=false;scene.add(s);pool.push({s,life:0})}
+function fx(x,y,z,vx,vy,vz,life,s0,s1,col,add,op,grav){const q=pool[pi=(pi+1)%pool.length],m=q.s.material;
+q.s.position.set(x,y,z);q.s.visible=true;m.color.setHex(col);m.blending=add?T.AdditiveBlending:T.NormalBlending;
+Object.assign(q,{vx,vy,vz,life,max:life,s0,s1,op,grav})}
+function boom(x,y,z,k){for(let i=0;i<7*k;i++)fx(x,y,z,V(-5,5),V(0,6),V(-5,5),V(.3,.6),1.2*k,4*k,0xff8a2a,1,1,0);
+for(let i=0;i<5*k;i++)fx(x,y,z,V(-3,3),V(1,5),V(-3,3),V(1.2,2.4),2*k,6*k,0x2c2b29,0,.65,-1);
+for(let i=0;i<4*k;i++)fx(x,y,z,V(-9,9),V(2,9),V(-9,9),.5,.3,.1,0xffd27a,1,1,14);
+flashT=1;flash.position.set(x,y+2,z)}
+function dust(x,y,z,n){for(let i=0;i<n;i++)fx(x,y,z,V(-2,2),V(1,4),V(-2,2),V(.7,1.3),.8,3.4,0x8b7a55,0,.45,0)}
 
-  <script>
-    (() => {
-      const canvas = document.querySelector('#game');
-      const ctx = canvas.getContext('2d');
-      const overlay = document.querySelector('#overlay');
-      const startButton = document.querySelector('#start-button');
-      const pauseButton = document.querySelector('#pause-button');
-      const toast = document.querySelector('#toast');
-      const world = { width: 2200, height: 1650 };
-      const keys = new Set();
-      const pointer = { x: innerWidth / 2, y: innerHeight / 2, down: false };
-      const player = { x: 1100, y: 1210, angle: -Math.PI / 2, hullAngle: -Math.PI / 2, speed: 0, health: 100, ammo: 6, reload: 0, fireCooldown: 0, invulnerable: 0 };
-      const capture = { x: 1100, y: 700, radius: 112, progress: 0, complete: false };
-      const camera = { x: player.x, y: player.y };
-      const enemies = [];
-      const shells = [];
-      const particles = [];
-      const obstacles = [];
-      const decor = [];
-      let running = false;
-      let paused = false;
-      let ended = false;
-      let score = 0;
-      let lastTime = 0;
-      let toastTimer = 0;
-      let touchFire = false;
-      let pixelRatio = 1;
+/* ---------- Tank yerleştirme, ateş ---------- */
+const mv=(o,dx,dz,r)=>{if(!blocked(o.x+dx,o.z+dz,r)){o.x+=dx;o.z+=dz;return 1}
+if(!blocked(o.x+dx,o.z,r))o.x+=dx;else if(!blocked(o.x,o.z+dz,r))o.z+=dz;return 0};
+const blocked=(x,z,r)=>Math.abs(x)>HX-r||Math.abs(z)>HZ-r||OB.some(o=>Math.hypot(x-o.x,z-o.z)<r+o.r*.9);
+function place(o){o.rec=Math.max(0,o.rec-DT*4);const sx=Math.sin(o.h),cz=Math.cos(o.h),y=hAt(o.x,o.z),
+hf=hAt(o.x+sx*3,o.z+cz*3),hb=hAt(o.x-sx*3,o.z-cz*3),hr=hAt(o.x+cz*2,o.z-sx*2),hl=hAt(o.x-cz*2,o.z+sx*2),g=o.t.g;
+g.position.set(o.x,y+.05,o.z);g.rotation.set(-Math.atan2(hf-hb,6),o.h,Math.atan2(hr-hl,4),'YXZ');
+o.t.tp.rotation.y=wr(o.ty-o.h);o.t.gp.rotation.x=-o.ge;o.t.bar.position.z=2.3-o.rec*.7;g.updateMatrixWorld(true)}
+function muz(o){o.t.muz.getWorldPosition(mp);md.set(0,0,1).transformDirection(o.t.gp.matrixWorld)}
+const shG=new T.CylinderGeometry(.1,.1,3,6),shP=new T.MeshBasicMaterial({color:0xfff0a0}),shE=new T.MeshBasicMaterial({color:0xff7a4a});
+function shoot(o,pl){muz(o);const s=new T.Mesh(shG,pl?shP:shE),v=md.clone();
+if(!pl){v.x+=V(-.03,.03);v.y+=V(-.01,.02);v.z+=V(-.03,.03);v.normalize()}
+s.position.copy(mp);s.quaternion.setFromUnitVectors(UP,v);scene.add(s);
+S.push({m:s,v:v.multiplyScalar(pl?130:72),pl,life:2.2,d:pl?36:13,ox:mp.x,oz:mp.z});
+for(let i=0;i<6;i++)fx(mp.x+md.x*i*.5,mp.y+md.y*i*.5,mp.z+md.z*i*.5,V(-2,2),V(-1,2),V(-2,2),.25,1.5,.4,0xffb347,1,1,0);
+for(let i=0;i<3;i++)fx(mp.x,mp.y,mp.z,V(-2,2),V(0,2),V(-2,2),V(.8,1.4),1,3.5,0x77736a,0,.5,0);
+flashT=pl?1:.5;flash.position.copy(mp);o.rec=1;if(pl)shake=.6}
+function spawn(x,z,k){const hv=k==='heavy',t=mkTank(hv?0x4a2a20:0x5a3224,hv?0x5e382a:0x74432f,hv),a=Math.atan2(P.x-x,P.z-z);
+scene.add(t.g);const e={t,x,z,h:a,ty:a,ge:0,hp:hv?110:70,mx:hv?110:70,k,cd:1+rnd()*1.8,sp:hv?5:7,st:rnd()<.5?-1:1,fl:0,rec:0};E.push(e);place(e)}
+function say(s){toast.s=s;toast.t=2.2}
+function reload(){if(P.am===6||P.rl>0||ended||!run)return;P.rl=1.5;say('MÜHİMMAT DOLDURULUYOR')}
+function brief(a,b,c){$('#eb').textContent=a;$('#t1').innerHTML=b;$('#cp').textContent=c}
+function clearIn(){js.on=0;js.x=js.y=0;touchF=mouseF=0;ptr.clear()}
+function reset(){[...E,...dead].forEach(e=>scene.remove(e.t.g));E.length=dead.length=0;S.forEach(s=>scene.remove(s.m));S.length=0;
+P.t.mats.forEach(m=>m.color.setHex(m.userData.c));Object.assign(P,{x:0,z:60,h:Math.PI,ty:Math.PI,ge:0,sp:0,hp:100,am:6,rl:0,cd:0,inv:0,rec:0});
+cap.p=0;cap.done=0;cm.color.setHex(0xd6ef67);score=0;ended=0;cs.yaw=Math.PI;cs.pitch=.12;IND.length=0;
+SP.forEach(a=>spawn(a[0],a[1],a[2]));place(P);$('#go').textContent='GÖREVE BAŞLA  →';
+brief('IRONBOUND 3D · SAHA RAPORU 06:40','DEMİR<br><span>VADİSİ</span>','Vadide düşman zırhlı devriyesi görüldü. Karakolu ele geçir ve bölgeyi temizle. Mürettebat hazır, komutan.')}
+function finish(v){ended=1;run=0;clearIn();if(document.pointerLockElement)document.exitPointerLock();
+brief(v?'GÖREV TAMAMLANDI':'GÖREV BAŞARISIZ',v?'BÖLGE<br><span>GÜVENDE</span>':'TANK<br><span>DEVRE DIŞI</span>',
+v?`Karakol güvence altında. ${score} puanla vadiyi temizledin.`:'Tankın hareket kabiliyetini yitirdi. Mürettebatı yeniden hazırla ve göreve dön.');
+$('#go').textContent='YENİDEN DENE  →';$('#ov').classList.remove('hidden');if(!v)P.t.mats.forEach(m=>m.color.setHex(0x141311))}
+const ov=$('#ov');
+function start(){if(ended)reset();run=1;paused=0;ov.classList.add('hidden');
+try{if(!coarse)hc.requestPointerLock()?.catch?.(()=>{});else document.documentElement.requestFullscreen?.()?.catch?.(()=>{})}catch(_){}}
+function pause(){if(!run||ended)return;paused=!paused;clearIn();ov.classList.toggle('hidden',!paused);
+if(paused){$('#go').textContent='DEVAM ET  →';if(document.pointerLockElement)document.exitPointerLock()}}
 
-      function seededRandom(seed) {
-        let value = seed >>> 0;
-        return () => {
-          value = (value * 1664525 + 1013904223) >>> 0;
-          return value / 4294967296;
-        };
-      }
+/* ---------- Girdi (klavye, fare, dokunmatik) ---------- */
+function look(dx,dy,s){const k=s*(1-.6*cs.zoom);cs.yaw-=dx*k;cs.pitch=cl(cs.pitch-dy*k,-.3,.4)}
+const bt=()=>({fire:{x:SW-100,y:SH-105,r:58},rel:{x:SW-198,y:SH-56,r:34},zoom:{x:SW-52,y:SH-202,r:34}});
+hc.addEventListener('pointerdown',e=>{if(!run||paused)return;e.preventDefault();const x=e.clientX,y=e.clientY;
+if(e.pointerType==='mouse'){if(e.button===2){zoomOn=!zoomOn;return}
+if(document.pointerLockElement===hc)mouseF=1;else{try{hc.requestPointerLock()?.catch?.(()=>{})}catch(_){}hc.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{r:'look',x,y})}return}
+hc.setPointerCapture(e.pointerId);const b=bt(),nr=q=>Math.hypot(x-q.x,y-q.y)<q.r+12;
+if(nr(b.fire)){touchF=1;ptr.set(e.pointerId,{r:'fire'})}
+else if(nr(b.rel))reload();else if(nr(b.zoom))zoomOn=!zoomOn;
+else if(x<SW*.4&&y>SH*.3&&!js.on){js.on=1;js.cx=x;js.cy=y;js.id=e.pointerId;ptr.set(e.pointerId,{r:'stick'})}
+else ptr.set(e.pointerId,{r:'look',x,y})});
+hc.addEventListener('pointermove',e=>{const p=ptr.get(e.pointerId);if(!p||paused)return;
+if(p.r==='look'){look(e.clientX-p.x,e.clientY-p.y,e.pointerType==='mouse'?.0035:.0055);p.x=e.clientX;p.y=e.clientY}
+else if(p.r==='stick'){let vx=(e.clientX-js.cx)/JR,vy=(e.clientY-js.cy)/JR;const l=Math.hypot(vx,vy);if(l>1){vx/=l;vy/=l}
+js.x=Math.abs(vx)<.12?0:vx;js.y=Math.abs(vy)<.12?0:-vy}});
+const up=e=>{if(e.pointerType==='mouse')mouseF=0;const p=ptr.get(e.pointerId);if(!p)return;
+if(p.r==='fire')touchF=0;if(p.r==='stick'){js.on=0;js.x=js.y=0}ptr.delete(e.pointerId)};
+hc.addEventListener('pointerup',up);hc.addEventListener('pointercancel',up);
+addEventListener('mousemove',e=>{if(document.pointerLockElement===hc&&run&&!paused)look(e.movementX,e.movementY,.0024)});
+document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&run&&!paused&&!ended)pause()});
+addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();K[k]=1;
+if(k==='r')reload();if(k==='z')zoomOn=!zoomOn;if(k==='escape'||k==='p')pause();if(k==='enter'&&!run)start()});
+addEventListener('keyup',e=>delete K[e.key.toLowerCase()]);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&run&&!paused)pause()});
+$('#go').onclick=start;$('#pz').onclick=pause;
+$('#fs').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.()?.catch?.(()=>{})}catch(_){}};
 
-      const random = seededRandom(4027);
-      for (let index = 0; index < 78; index += 1) {
-        const x = 100 + random() * (world.width - 200);
-        const y = 100 + random() * (world.height - 200);
-        if (Math.hypot(x - player.x, y - player.y) < 230 || Math.hypot(x - capture.x, y - capture.y) < 185) continue;
-        const type = random() < .5 ? 'rock' : random() < .54 ? 'ruin' : 'crater';
-        obstacles.push({ x, y, radius: type === 'ruin' ? 36 + random() * 17 : 17 + random() * 22, type, rotation: random() * Math.PI });
-      }
-      for (let index = 0; index < 440; index += 1) {
-        decor.push({ x: random() * world.width, y: random() * world.height, size: 1 + random() * 3, tone: random() });
-      }
+/* ---------- Oyun güncelleme ---------- */
+function vw(){const cp=Math.cos(cs.pitch);D.set(Math.sin(cs.yaw)*cp,Math.sin(cs.pitch),Math.cos(cs.yaw)*cp);PV.set(P.x,hAt(P.x,P.z)+3.1,P.z)}
+function update(dt){if(!run||paused||ended)return;
+const kd=a=>K[a]?1:0,drive=cl(kd('w')-kd('s')+js.y,-1,1),turn=cl(kd('d')-kd('a')+js.x,-1,1);
+cs.yaw+=(kd('arrowleft')-kd('arrowright'))*dt*1.6;cs.pitch=cl(cs.pitch+(kd('arrowup')-kd('arrowdown'))*dt,-.3,.4);
+P.h-=turn*dt*(1.3-Math.min(Math.abs(P.sp)/26,.45))*(P.sp<-.5?-1:1);
+P.sp+=drive*dt*(drive*P.sp<0?36:22);P.sp*=Math.pow(drive?.986:.91,dt*60);P.sp=cl(P.sp,-8,16);
+if(!mv(P,Math.sin(P.h)*P.sp*dt,Math.cos(P.h)*P.sp*dt,3.3))P.sp*=.6;
+vw();const py=hAt(P.x,P.z),ax=PV.x+D.x*140-P.x,az=PV.z+D.z*140-P.z,ay=PV.y+D.y*140-(py+2.4);
+P.ty+=cl(wr(Math.atan2(ax,az)-P.ty),-2.4*dt,2.4*dt);
+P.ge+=cl(cl(Math.atan2(ay,Math.hypot(ax,az)),-.15,.35)-P.ge,-1.5*dt,1.5*dt);
+place(P);P.cd=Math.max(0,P.cd-dt);P.inv=Math.max(0,P.inv-dt);
+if((K[' ']||mouseF||touchF)&&P.cd<=0&&P.rl<=0){if(P.am<=0)reload();else{P.am--;P.cd=.45;shoot(P,1)}}
+if(P.rl>0){P.rl-=dt;if(P.rl<=0){P.rl=0;P.am=6;say('MÜHİMMAT HAZIR')}}
+P.dd-=dt;if(Math.abs(P.sp)>3&&P.dd<=0){P.dd=.07;for(const s of[-1,1])fx(P.x-Math.sin(P.h)*3.2+Math.cos(P.h)*1.7*s,py+.4,P.z-Math.cos(P.h)*3.2-Math.sin(P.h)*1.7*s,V(-.5,.5),V(.5,1.5),V(-.5,.5),1.2,.8,3.4,0x8b7a55,0,.35,0)}
+const ins=Math.hypot(P.x-CP.x,P.z-CP.z)<CP.r,con=E.some(e=>Math.hypot(e.x-CP.x,e.z-CP.z)<CP.r*.9);
+if(ins&&!con&&!cap.done){cap.p=Math.min(100,cap.p+dt*8.5);if(cap.p>=100){cap.done=1;score+=500;cm.color.setHex(0x6fe0a0);say('KARAKOL ELE GEÇİRİLDİ')}}
+else if(!cap.done&&con)cap.p=Math.max(0,cap.p-dt*3);
+for(const e of E){const dx=P.x-e.x,dz=P.z-e.z,di=Math.hypot(dx,dz),wa=Math.atan2(dx,dz),ux=Math.sin(e.h),uz=Math.cos(e.h);
+e.h+=cl(wr(wa-e.h),-.7*dt,.7*dt);e.ty+=cl(wr(wa-e.ty),-1.3*dt,1.3*dt);
+e.ge+=cl(cl(Math.atan2(py-hAt(e.x,e.z),di),-.15,.3)-e.ge,-dt,dt);
+if(di>44){if(!mv(e,ux*e.sp*dt,uz*e.sp*dt,3.2))e.h+=e.st*dt*1.7}
+else if(di<30)mv(e,-ux*e.sp*.55*dt,-uz*e.sp*.55*dt,3.2);
+else mv(e,uz*e.st*e.sp*.35*dt,-ux*e.st*e.sp*.35*dt,3.2);
+e.cd-=dt;e.fl=Math.max(0,e.fl-dt);e.t.mats.forEach(m=>m.emissive.setHex(e.fl>0?0x883311:0));
+if(e.cd<=0&&di<95&&Math.abs(wr(wa-e.ty))<.05){shoot(e,0);e.cd=1.6+rnd()*1.3}
+place(e)}
+for(let i=S.length-1;i>=0;i--){const s=S[i],n=Math.ceil(s.v.length()*dt/1.4),st=dt/n;let hit=0,q=s.m.position;
+for(let k=0;k<n&&!hit;k++){q.addScaledVector(s.v,st);
+if(q.y<hAt(q.x,q.z)||OB.some(o=>Math.hypot(q.x-o.x,q.z-o.z)<o.r*.9&&q.y<hAt(o.x,o.z)+o.hh))hit=1;
+else if(s.pl){const e=E.find(e=>Math.hypot(q.x-e.x,q.z-e.z)<3.4&&q.y<hAt(e.x,e.z)+3.4);
+if(e){hit=2;e.hp-=s.d;e.fl=.15;if(e.hp<=0){boom(e.x,hAt(e.x,e.z)+1.5,e.z,1.6);E.splice(E.indexOf(e),1);dead.push(e);
+e.t.mats.forEach(m=>m.color.setHex(0x141311));e.t.mats.forEach(m=>m.emissive.setHex(0));score+=e.k==='heavy'?180:100;say('DÜŞMAN ZIRHLISI ETKİSİZ');
+if(!E.length&&!cap.done)spawn(125,-87,'heavy')}}}
+else if(Math.hypot(q.x-P.x,q.z-P.z)<3.4&&q.y<hAt(P.x,P.z)+3.4){hit=2;
+if(P.inv<=0){P.hp=Math.max(0,P.hp-s.d);P.inv=.4;hurt=1;shake=1;IND.push({dx:s.ox-P.x,dz:s.oz-P.z,t:1.5});if(!P.hp){boom(P.x,py+1.5,P.z,1.6);finish(0)}}}}
+s.life-=dt;if(hit||s.life<=0){if(hit===2)boom(q.x,q.y,q.z,.9);else if(hit){dust(q.x,q.y,q.z,4);fx(q.x,q.y,q.z,0,0,0,.25,1.5,.5,0xffd27a,1,1,0)}
+scene.remove(s.m);S.splice(i,1)}}
+if(cap.done&&!E.length){finish(1);return}
+for(const e of dead)if(rnd()<dt*9)fx(e.x,hAt(e.x,e.z)+2,e.z,V(-.5,.5),V(2,4),V(-.5,.5),V(1.5,2.5),1.5,5,0x2a2927,0,.6,0);
+for(const q of pool){if(q.life<=0)continue;q.life-=dt;if(q.life<=0){q.s.visible=false;continue}
+const k=1-q.life/q.max,p=q.s.position;p.x+=q.vx*dt;p.y+=q.vy*dt;p.z+=q.vz*dt;q.vy-=q.grav*dt;
+q.s.scale.setScalar(lp(q.s0,q.s1,k));q.s.material.opacity=q.op*(1-k)*Math.min(1,(k+.05)*10)}
+for(let i=IND.length-1;i>=0;i--){IND[i].t-=dt;if(IND[i].t<=0)IND.splice(i,1)}
+if(toast.t>0)toast.t-=dt;shake=Math.max(0,shake-dt*3);hurt=Math.max(0,hurt-dt*2);
+flashT=Math.max(0,flashT-dt*6);flash.intensity=flashT*3}
 
-      function resize() {
-        pixelRatio = Math.min(devicePixelRatio || 1, 2);
-        canvas.width = Math.round(innerWidth * pixelRatio);
-        canvas.height = Math.round(innerHeight * pixelRatio);
-        canvas.style.width = `${innerWidth}px`;
-        canvas.style.height = `${innerHeight}px`;
-        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      }
-      addEventListener('resize', resize);
-      resize();
+/* ---------- Kamera ---------- */
+function view(dt){vw();cs.zoom=lp(cs.zoom,zoomOn?1:0,Math.min(1,dt*8));const f=lp(60,26,cs.zoom);
+if(Math.abs(cam.fov-f)>.05){cam.fov=f;cam.updateProjectionMatrix()}
+cam.position.copy(PV).addScaledVector(D,-lp(12,5,cs.zoom));cam.position.y=Math.max(cam.position.y,hAt(cam.position.x,cam.position.z)+1.5);
+if(shake>0){cam.position.x+=V(-1,1)*shake*.3;cam.position.y+=V(-1,1)*shake*.3}
+cam.lookAt(tv.copy(PV).addScaledVector(D,30));sky.position.copy(cam.position);
+sun.position.set(P.x+sunDir.x*120,sunDir.y*120,P.z+sunDir.z*120);sun.target.position.set(P.x,0,P.z);
+const pl=.65+Math.sin(performance.now()/280)*.15;cm.opacity=(cap.done?.35:.7)*pl}
 
-      function announce(message) {
-        toast.textContent = message;
-        toast.classList.add('show');
-        toastTimer = 2.2;
-      }
+/* ---------- HUD (2D katman) ---------- */
+const SG='#d6ef67',PP='#e7e2d2',RU='#d8794c',F=(s,w=700)=>hx.font=`${w} ${s}px "Barlow Condensed",sans-serif`;
+function hud(){const x=hx;x.clearRect(0,0,SW,SH);x.textBaseline='middle';x.textAlign='center';
+const cz=cs.zoom,cx=SW/2,cy=SH/2;
+if(cz>.02){const g=x.createRadialGradient(cx,cy,SH*.25,cx,cy,SH*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(0,0,0,${.75*cz})`);x.fillStyle=g;x.fillRect(0,0,SW,SH)}
+if(hurt>0){const g=x.createRadialGradient(cx,cy,SH*.3,cx,cy,SH*.8);g.addColorStop(0,'rgba(190,30,20,0)');g.addColorStop(1,`rgba(190,30,20,${hurt*.45})`);x.fillStyle=g;x.fillRect(0,0,SW,SH)}
+x.strokeStyle='rgba(231,226,210,.85)';x.lineWidth=1.5;x.beginPath();
+x.moveTo(cx-18,cy);x.lineTo(cx-6,cy);x.moveTo(cx+6,cy);x.lineTo(cx+18,cy);x.moveTo(cx,cy-18);x.lineTo(cx,cy-6);x.moveTo(cx,cy+6);x.lineTo(cx,cy+18);x.stroke();
+muz(P);tv.copy(mp).addScaledVector(md,150).project(cam);
+if(tv.z<1){x.strokeStyle=SG;x.beginPath();x.arc((tv.x+1)/2*SW,(1-tv.y)/2*SH,8,0,7);x.stroke()}
+for(const e of E){tv.set(e.x,hAt(e.x,e.z)+6.5,e.z).project(cam);if(tv.z>1)continue;
+const sx=(tv.x+1)/2*SW,sy=(1-tv.y)/2*SH;
+x.fillStyle=RU;x.beginPath();x.moveTo(sx-7,sy-4);x.lineTo(sx+7,sy-4);x.lineTo(sx,sy+7);x.fill();
+x.fillStyle='rgba(20,22,19,.75)';x.fillRect(sx-24,sy-13,48,4);x.fillStyle=RU;x.fillRect(sx-24,sy-13,48*e.hp/e.mx,4);
+F(13);x.fillStyle=PP;x.fillText((Math.hypot(e.x-P.x,e.z-P.z)|0)+' m',sx,sy-22)}
+for(const d of IND){const l=Math.hypot(d.dx,d.dz)||1,c=Math.cos(cs.yaw),s=Math.sin(cs.yaw),
+ux=(-d.dx*c+d.dz*s)/l,uy=-(d.dx*s+d.dz*c)/l;x.save();x.translate(cx+ux*110,cy+uy*110);x.rotate(Math.atan2(uy,ux)+Math.PI/2);
+x.fillStyle=`rgba(216,60,40,${Math.min(1,d.t)})`;x.beginPath();x.moveTo(0,-12);x.lineTo(16,10);x.lineTo(-16,10);x.fill();x.restore()}
+{const S0=coarse?140:128,c=S0/2,m=16,sc=c/105,co=Math.cos(cs.yaw),si=Math.sin(cs.yaw),
+ps=(a,b)=>{const dx=a-P.x,dz=b-P.z;return[(-dx*co+dz*si)*sc,-(dx*si+dz*co)*sc]};
+x.save();x.translate(m+c,m+c);x.beginPath();x.arc(0,0,c,0,7);x.clip();x.fillStyle='rgba(23,27,24,.75)';x.fillRect(-c,-c,S0,S0);
+const q=ps(CP.x,CP.z);x.strokeStyle=SG;x.lineWidth=1.5;x.beginPath();x.arc(q[0],q[1],CP.r*sc,0,7);x.stroke();
+x.fillStyle=RU;for(const e of E){const p=ps(e.x,e.z);x.fillRect(p[0]-3,p[1]-3,6,6)}
+x.rotate(cs.yaw-P.h);x.fillStyle=PP;x.beginPath();x.moveTo(0,-7);x.lineTo(5,6);x.lineTo(-5,6);x.fill();x.restore();
+x.strokeStyle='rgba(231,226,210,.4)';x.lineWidth=1;x.beginPath();x.arc(m+c,m+c,c,0,7);x.stroke()}
+F(12);x.fillStyle='#a8a99d';x.fillText(cap.done?'KARAKOL GÜVENDE':'İLERİ KARAKOL  %'+(cap.p|0),cx,20);
+x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-140,32,280,4);x.fillStyle=SG;x.fillRect(cx-140,32,280*cap.p/100,4);
+x.textAlign='right';F(16);x.fillStyle=PP;x.fillText('SKOR '+String(score).padStart(3,'0'),SW-16,78);x.textAlign='center';
+if(toast.t>0){F(15);x.fillStyle=`rgba(214,239,103,${Math.min(1,toast.t*2)})`;x.fillText(toast.s,cx,62)}
+F(13);x.fillStyle='#a8a99d';x.fillText('GÖVDE  '+Math.ceil(P.hp)+'%',cx,SH-56);
+x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-130,SH-44,260,8);x.fillStyle=P.hp<35?RU:SG;x.fillRect(cx-130,SH-44,260*P.hp/100,8);
+if(P.rl>0){x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-130,SH-26,260,6);x.fillStyle=PP;x.fillRect(cx-130,SH-26,260*(1-P.rl/1.5),6)}
+else for(let i=0;i<6;i++){x.fillStyle=i<P.am?SG:'rgba(231,226,210,.2)';x.fillRect(cx-130+i*44,SH-26,38,6)}
+if(coarse){const b=bt(),sx=js.on?js.cx:110,sy=js.on?js.cy:SH-110;x.lineWidth=2;
+x.strokeStyle=`rgba(231,226,210,${js.on?.6:.3})`;x.beginPath();x.arc(sx,sy,JR,0,7);x.stroke();
+x.fillStyle=`rgba(214,239,103,${js.on?.45:.2})`;x.beginPath();x.arc(sx+js.x*JR,sy-js.y*JR,26,0,7);x.fill();
+for(const[k,t]of[['fire','ATEŞ'],['rel','DOLDUR'],['zoom','ZOOM']]){const q=b[k],on=k==='fire'?touchF:k==='zoom'?zoomOn:0;
+x.fillStyle=on?'rgba(214,239,103,.3)':'rgba(23,27,24,.55)';x.strokeStyle=k==='fire'?SG:'rgba(231,226,210,.5)';
+x.beginPath();x.arc(q.x,q.y,q.r,0,7);x.fill();x.stroke();F(k==='fire'?17:12,800);x.fillStyle=k==='fire'?SG:PP;x.fillText(t,q.x,q.y)}
+if(SH>SW){x.fillStyle='rgba(13,16,14,.8)';x.fillRect(0,cy-34,SW,68);F(20,800);x.fillStyle=SG;x.fillText('CİHAZI YATAY ÇEVİR',cx,cy)}}}
 
-      function spawnEnemy(x, y, kind = 'scout') {
-        enemies.push({ x, y, angle: Math.atan2(player.y - y, player.x - x), health: kind === 'heavy' ? 110 : 70, maxHealth: kind === 'heavy' ? 110 : 70, kind, cooldown: 1 + random() * 1.8, speed: kind === 'heavy' ? 30 : 43, strafe: random() < .5 ? -1 : 1, hitFlash: 0 });
-      }
-      spawnEnemy(640, 490, 'scout');
-      spawnEnemy(1510, 420, 'heavy');
-      spawnEnemy(1740, 930, 'scout');
-      spawnEnemy(550, 1050, 'scout');
-      spawnEnemy(1400, 1370, 'heavy');
-
-      function screenToWorld(x, y) {
-        return { x: x + camera.x - innerWidth / 2, y: y + camera.y - innerHeight / 2 };
-      }
-
-      canvas.addEventListener('pointermove', (event) => {
-        pointer.x = event.clientX;
-        pointer.y = event.clientY;
-      });
-      canvas.addEventListener('pointerdown', (event) => {
-        if (event.pointerType === 'mouse' && event.button === 0) pointer.down = true;
-        if (event.pointerType !== 'mouse') {
-          pointer.x = event.clientX;
-          pointer.y = event.clientY;
-          pointer.down = true;
-        }
-      });
-      addEventListener('pointerup', () => { pointer.down = false; });
-      addEventListener('keydown', (event) => {
-        const key = event.key.toLowerCase();
-        if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) event.preventDefault();
-        keys.add(key);
-        if (key === 'r') reload();
-        if (key === 'escape' || key === 'p') togglePause();
-        if (key === 'enter' && !running) startGame();
-      });
-      addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
-      document.querySelectorAll('.dpad .touch-button').forEach((button) => {
-        const key = button.dataset.key;
-        button.addEventListener('pointerdown', (event) => { event.preventDefault(); keys.add(key); button.classList.add('active'); });
-        const release = () => { keys.delete(key); button.classList.remove('active'); };
-        button.addEventListener('pointerup', release);
-        button.addEventListener('pointercancel', release);
-        button.addEventListener('pointerleave', release);
-      });
-      const fireButton = document.querySelector('#fire-button');
-      fireButton.addEventListener('pointerdown', (event) => { event.preventDefault(); touchFire = true; fireButton.classList.add('active'); });
-      ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => fireButton.addEventListener(name, () => { touchFire = false; fireButton.classList.remove('active'); }));
-      startButton.addEventListener('click', startGame);
-      pauseButton.addEventListener('click', togglePause);
-
-      function startGame() {
-        if (ended) resetGame();
-        running = true;
-        paused = false;
-        overlay.classList.add('hidden');
-        lastTime = performance.now();
-      }
-
-      function togglePause() {
-        if (!running && !ended) return;
-        if (ended) return;
-        paused = !paused;
-        if (paused) {
-          startButton.textContent = 'DEVAM ET  →';
-          overlay.classList.remove('hidden');
-        } else {
-          overlay.classList.add('hidden');
-          lastTime = performance.now();
-        }
-      }
-
-      function resetGame() {
-        player.x = 1100; player.y = 1210; player.angle = -Math.PI / 2; player.hullAngle = -Math.PI / 2; player.speed = 0; player.health = 100; player.ammo = 6; player.reload = 0; player.fireCooldown = 0; player.invulnerable = 0;
-        capture.progress = 0; capture.complete = false; score = 0; shells.length = 0; particles.length = 0; enemies.length = 0;
-        spawnEnemy(640, 490, 'scout'); spawnEnemy(1510, 420, 'heavy'); spawnEnemy(1740, 930, 'scout'); spawnEnemy(550, 1050, 'scout'); spawnEnemy(1400, 1370, 'heavy');
-        ended = false;
-        startButton.textContent = 'GÖREVE BAŞLA  →';
-      }
-
-      function reload() {
-        if (player.ammo === 6 || player.reload > 0 || ended) return;
-        player.reload = 1.35;
-        announce('MÜHİMMAT DOLDURULUYOR');
-      }
-
-      function fire(owner) {
-        if (owner === 'player') {
-          if (!running || paused || ended || player.fireCooldown > 0 || player.reload > 0) return;
-          if (player.ammo <= 0) { reload(); return; }
-          player.ammo -= 1;
-          player.fireCooldown = .34;
-          const angle = player.angle;
-          shells.push({ x: player.x + Math.cos(angle) * 31, y: player.y + Math.sin(angle) * 31, vx: Math.cos(angle) * 490, vy: Math.sin(angle) * 490, owner, life: 1.55, damage: 36 });
-          burst(player.x + Math.cos(angle) * 35, player.y + Math.sin(angle) * 35, '#e5d897', 5, 55);
-        } else {
-          const angle = owner.angle;
-          shells.push({ x: owner.x + Math.cos(angle) * 28, y: owner.y + Math.sin(angle) * 28, vx: Math.cos(angle) * 320, vy: Math.sin(angle) * 320, owner: 'enemy', life: 2.2, damage: 13 });
-          burst(owner.x + Math.cos(angle) * 31, owner.y + Math.sin(angle) * 31, '#d8794c', 4, 40);
-        }
-      }
-
-      function burst(x, y, color, amount, force) {
-        for (let index = 0; index < amount; index += 1) {
-          const angle = random() * Math.PI * 2;
-          const speed = random() * force;
-          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: .22 + random() * .38, maxLife: .6, color, size: 1 + random() * 2.6 });
-        }
-      }
-
-      function collides(x, y, radius = 17) {
-        if (x < radius || y < radius || x > world.width - radius || y > world.height - radius) return true;
-        return obstacles.some((obstacle) => obstacle.type !== 'crater' && Math.hypot(x - obstacle.x, y - obstacle.y) < radius + obstacle.radius * .7);
-      }
-
-      function update(dt) {
-        if (!running || paused || ended) return;
-        const forward = keys.has('w') || keys.has('arrowup');
-        const reverse = keys.has('s') || keys.has('arrowdown');
-        const left = keys.has('a') || keys.has('arrowleft');
-        const right = keys.has('d') || keys.has('arrowright');
-        const turn = (right ? 1 : 0) - (left ? 1 : 0);
-        const drive = (forward ? 1 : 0) - (reverse ? 1 : 0);
-        player.hullAngle += turn * dt * (2.05 - Math.min(Math.abs(player.speed) / 140, .8)) * (player.speed < 0 ? -1 : 1);
-        player.speed += drive * dt * 145;
-        player.speed *= Math.pow(drive ? .986 : .91, dt * 60);
-        player.speed = Math.max(-82, Math.min(145, player.speed));
-        const nextX = player.x + Math.cos(player.hullAngle) * player.speed * dt;
-        const nextY = player.y + Math.sin(player.hullAngle) * player.speed * dt;
-        if (!collides(nextX, nextY)) { player.x = nextX; player.y = nextY; } else player.speed *= -.22;
-        const target = screenToWorld(pointer.x, pointer.y);
-        player.angle = Math.atan2(target.y - player.y, target.x - player.x);
-        if (keys.has(' ') || pointer.down || touchFire) fire('player');
-        player.fireCooldown = Math.max(0, player.fireCooldown - dt);
-        player.invulnerable = Math.max(0, player.invulnerable - dt);
-        if (player.reload > 0) { player.reload -= dt; if (player.reload <= 0) { player.ammo = 6; player.reload = 0; announce('MÜHİMMAT HAZIR'); } }
-        if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toast.classList.remove('show'); }
-
-        const insideZone = Math.hypot(player.x - capture.x, player.y - capture.y) < capture.radius;
-        const contesting = enemies.some((enemy) => Math.hypot(enemy.x - capture.x, enemy.y - capture.y) < capture.radius * .9);
-        if (insideZone && !contesting && !capture.complete) {
-          capture.progress = Math.min(100, capture.progress + dt * 8.5);
-          if (capture.progress === 100) { capture.complete = true; score += 500; announce('KARAKOL ELE GEÇİRİLDİ'); }
-        } else if (!capture.complete && contesting) capture.progress = Math.max(0, capture.progress - dt * 3);
-
-        for (const enemy of enemies) {
-          const dx = player.x - enemy.x;
-          const dy = player.y - enemy.y;
-          const distance = Math.hypot(dx, dy);
-          const desired = Math.atan2(dy, dx);
-          let angleDiff = ((desired - enemy.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-          enemy.angle += Math.max(-1.5 * dt, Math.min(1.5 * dt, angleDiff));
-          if (distance > 275) {
-            const stepX = enemy.x + Math.cos(enemy.angle) * enemy.speed * dt;
-            const stepY = enemy.y + Math.sin(enemy.angle) * enemy.speed * dt;
-            if (!collides(stepX, stepY, 15)) { enemy.x = stepX; enemy.y = stepY; }
-            else enemy.angle += enemy.strafe * dt * 1.7;
-          } else if (distance < 185) {
-            enemy.x -= Math.cos(enemy.angle) * enemy.speed * .55 * dt;
-            enemy.y -= Math.sin(enemy.angle) * enemy.speed * .55 * dt;
-          } else {
-            enemy.angle += Math.sin(performance.now() / 850 + enemy.x) * dt * .35;
-          }
-          enemy.cooldown -= dt;
-          enemy.hitFlash = Math.max(0, enemy.hitFlash - dt);
-          if (enemy.cooldown <= 0 && distance < 490 && Math.abs(angleDiff) < .34) { fire(enemy); enemy.cooldown = 1.5 + random() * 1.2; }
-        }
-
-        for (let index = shells.length - 1; index >= 0; index -= 1) {
-          const shell = shells[index];
-          shell.x += shell.vx * dt; shell.y += shell.vy * dt; shell.life -= dt;
-          let hit = shell.life <= 0 || collides(shell.x, shell.y, 3);
-          if (shell.owner === 'player') {
-            const targetEnemy = enemies.find((enemy) => Math.hypot(shell.x - enemy.x, shell.y - enemy.y) < 20);
-            if (targetEnemy) {
-              targetEnemy.health -= shell.damage; targetEnemy.hitFlash = .15; hit = true;
-              if (targetEnemy.health <= 0) {
-                burst(targetEnemy.x, targetEnemy.y, '#d8794c', 18, 95);
-                enemies.splice(enemies.indexOf(targetEnemy), 1); score += targetEnemy.kind === 'heavy' ? 180 : 100;
-                announce('DÜŞMAN ZIRHLISI ETKİSİZ');
-                if (enemies.length === 0 && !capture.complete) spawnEnemy(1880, 280, 'heavy');
-              }
-            }
-          } else if (Math.hypot(shell.x - player.x, shell.y - player.y) < 19) {
-            hit = true;
-            if (player.invulnerable <= 0) { player.health = Math.max(0, player.health - shell.damage); player.invulnerable = .4; burst(player.x, player.y, '#d8794c', 7, 65); if (player.health === 0) finishGame(false); }
-          }
-          if (hit) { burst(shell.x, shell.y, shell.owner === 'player' ? '#d4c37d' : '#d8794c', 7, 45); shells.splice(index, 1); }
-        }
-        if (capture.complete && enemies.length === 0) { finishGame(true); return; }
-        for (let index = particles.length - 1; index >= 0; index -= 1) {
-          const particle = particles[index]; particle.x += particle.vx * dt; particle.y += particle.vy * dt; particle.life -= dt; particle.vx *= .96; particle.vy *= .96;
-          if (particle.life <= 0) particles.splice(index, 1);
-        }
-        camera.x += (player.x - camera.x) * Math.min(1, dt * 5);
-        camera.y += (player.y - camera.y) * Math.min(1, dt * 5);
-        updateHud();
-      }
-
-      function updateHud() {
-        document.querySelector('#health-text').textContent = `${Math.ceil(player.health)}%`;
-        document.querySelector('#health-fill').style.width = `${player.health}%`;
-        document.querySelector('#health-fill').style.background = player.health < 35 ? '#d8794c' : 'var(--signal)';
-        document.querySelector('#ammo-text').textContent = player.reload > 0 ? 'DOLDURULUYOR' : `${String(player.ammo).padStart(2, '0')} / 06`;
-        document.querySelector('#score-text').textContent = String(score).padStart(3, '0');
-        document.querySelector('#capture-fill').style.width = `${capture.progress}%`;
-        document.querySelector('#capture-text').textContent = `${Math.floor(capture.progress)}%`;
-        document.querySelector('#objective-state').textContent = capture.complete ? 'TAMAMLANDI' : 'AKTİF';
-      }
-
-      function finishGame(victory) {
-        ended = true; running = false;
-        document.querySelector('.briefing .eyebrow').textContent = victory ? 'GÖREV TAMAMLANDI' : 'GÖREV BAŞARISIZ';
-        document.querySelector('.briefing h2').innerHTML = victory ? 'BÖLGE<br><span>GÜVENDE</span>' : 'TANK<br><span>DEVRE DIŞI</span>';
-        document.querySelector('.briefing-copy').textContent = victory ? `Karakol güvence altında. ${score} puanla vadiyi temizledin.` : 'Tankın hareket kabiliyetini yitirdi. Mürettebatı yeniden hazırla ve göreve dön.';
-        startButton.textContent = 'YENİDEN DENE  →';
-        overlay.classList.remove('hidden');
-      }
-
-      function drawGround() {
-        ctx.fillStyle = '#59604a'; ctx.fillRect(0, 0, world.width, world.height);
-        ctx.fillStyle = '#60634d'; ctx.beginPath(); ctx.ellipse(1110, 840, 640, 490, -.08, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(208,197,145,.11)'; ctx.lineWidth = 1;
-        for (let x = 0; x <= world.width; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, world.height); ctx.stroke(); }
-        for (let y = 0; y <= world.height; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(world.width, y); ctx.stroke(); }
-        for (const item of decor) {
-          ctx.fillStyle = item.tone > .5 ? 'rgba(28,34,27,.18)' : 'rgba(202,190,139,.13)';
-          ctx.fillRect(item.x, item.y, item.size * 2, item.size);
-        }
-        ctx.fillStyle = 'rgba(182,157,102,.22)';
-        ctx.beginPath(); ctx.moveTo(880, 1650); ctx.bezierCurveTo(1040, 1340, 880, 1110, 1080, 850); ctx.bezierCurveTo(1220, 650, 1010, 420, 1130, 0); ctx.lineTo(1270, 0); ctx.bezierCurveTo(1150, 420, 1360, 650, 1220, 850); ctx.bezierCurveTo(1020, 1110, 1180, 1340, 1020, 1650); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(81,57,43,.19)';
-        for (const obstacle of obstacles) if (obstacle.type === 'crater') { ctx.beginPath(); ctx.ellipse(obstacle.x, obstacle.y, obstacle.radius * 1.35, obstacle.radius * .7, obstacle.rotation, 0, Math.PI * 2); ctx.fill(); }
-      }
-
-      function drawObstacle(obstacle) {
-        ctx.save(); ctx.translate(obstacle.x, obstacle.y); ctx.rotate(obstacle.rotation);
-        if (obstacle.type === 'rock') {
-          ctx.fillStyle = '#444a3d'; ctx.beginPath(); ctx.moveTo(-obstacle.radius, 5); ctx.lineTo(-obstacle.radius * .7, -obstacle.radius * .7); ctx.lineTo(0, -obstacle.radius); ctx.lineTo(obstacle.radius * .8, -obstacle.radius * .55); ctx.lineTo(obstacle.radius, obstacle.radius * .55); ctx.lineTo(0, obstacle.radius * .85); ctx.closePath(); ctx.fill();
-          ctx.strokeStyle = 'rgba(218,210,178,.16)'; ctx.stroke();
-        } else if (obstacle.type === 'ruin') {
-          ctx.fillStyle = '#484b3c'; ctx.fillRect(-obstacle.radius, -obstacle.radius * .75, obstacle.radius * 2, obstacle.radius * 1.5);
-          ctx.fillStyle = '#373c32'; ctx.fillRect(-obstacle.radius * .65, -obstacle.radius * .4, obstacle.radius * .52, obstacle.radius * .52); ctx.fillRect(obstacle.radius * .2, obstacle.radius * .05, obstacle.radius * .32, obstacle.radius * .35);
-          ctx.strokeStyle = 'rgba(226,213,167,.14)'; ctx.strokeRect(-obstacle.radius, -obstacle.radius * .75, obstacle.radius * 2, obstacle.radius * 1.5);
-        }
-        ctx.restore();
-      }
-
-      function drawTank(tank, isPlayer) {
-        ctx.save(); ctx.translate(tank.x, tank.y);
-        if (isPlayer && player.invulnerable > 0 && Math.floor(performance.now() / 65) % 2 === 0) ctx.globalAlpha = .5;
-        ctx.rotate(isPlayer ? tank.hullAngle : tank.angle);
-        const body = isPlayer ? '#a7a571' : tank.kind === 'heavy' ? '#9a5743' : '#b45d43';
-        ctx.fillStyle = 'rgba(13,15,13,.35)'; ctx.fillRect(-16, -13, 37, 30);
-        ctx.fillStyle = isPlayer ? '#32392e' : '#42342f'; ctx.fillRect(-17, -13, 34, 7); ctx.fillRect(-17, 6, 34, 7);
-        ctx.fillStyle = body; ctx.fillRect(-13, -9, 27, 18);
-        ctx.rotate(isPlayer ? tank.angle - tank.hullAngle : 0);
-        ctx.fillStyle = isPlayer ? '#c6bd82' : '#cf7957'; ctx.fillRect(-7, -7, 13, 14);
-        ctx.fillStyle = '#292d27'; ctx.fillRect(-1, -3, 29, 6);
-        ctx.fillStyle = isPlayer ? '#d7ef76' : '#e3ad79'; ctx.fillRect(22, -1, 10, 2);
-        ctx.fillStyle = 'rgba(235,227,194,.45)'; ctx.fillRect(-12, -10, 5, 2); ctx.fillRect(-12, 8, 5, 2);
-        ctx.restore();
-        if (!isPlayer && tank.health < tank.maxHealth) {
-          ctx.fillStyle = 'rgba(20,22,19,.72)'; ctx.fillRect(tank.x - 18, tank.y - 25, 36, 3);
-          ctx.fillStyle = '#d8794c'; ctx.fillRect(tank.x - 18, tank.y - 25, 36 * Math.max(0, tank.health / tank.maxHealth), 3);
-        }
-      }
-
-      function drawCapture() {
-        const pulse = .65 + Math.sin(performance.now() / 280) * .12;
-        ctx.fillStyle = `rgba(214,239,103,${capture.complete ? .05 : .07 * pulse})`;
-        ctx.beginPath(); ctx.arc(capture.x, capture.y, capture.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = capture.complete ? 'rgba(214,239,103,.72)' : `rgba(214,239,103,${.42 * pulse})`;
-        ctx.lineWidth = 2; ctx.setLineDash([7, 8]); ctx.beginPath(); ctx.arc(capture.x, capture.y, capture.radius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(214,239,103,.42)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(capture.x - 14, capture.y); ctx.lineTo(capture.x + 14, capture.y); ctx.moveTo(capture.x, capture.y - 14); ctx.lineTo(capture.x, capture.y + 14); ctx.stroke();
-        ctx.fillStyle = '#d6ef67'; ctx.font = '10px "DM Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText(capture.complete ? 'KARAKOL GÜVENDE' : 'İLERİ KARAKOL', capture.x, capture.y - capture.radius - 15);
-      }
-
-      function render() {
-        ctx.clearRect(0, 0, innerWidth, innerHeight);
-        ctx.save();
-        ctx.translate(Math.round(innerWidth / 2 - camera.x), Math.round(innerHeight / 2 - camera.y));
-        drawGround();
-        drawCapture();
-        for (const obstacle of obstacles) drawObstacle(obstacle);
-        for (const enemy of enemies) drawTank(enemy, false);
-        drawTank(player, true);
-        for (const shell of shells) {
-          ctx.fillStyle = shell.owner === 'player' ? '#f0e3a0' : '#e38a62';
-          ctx.beginPath(); ctx.arc(shell.x, shell.y, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.globalAlpha = .28; ctx.beginPath(); ctx.arc(shell.x - shell.vx * .035, shell.y - shell.vy * .035, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-        }
-        for (const particle of particles) { ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife); ctx.fillStyle = particle.color; ctx.fillRect(particle.x, particle.y, particle.size, particle.size); }
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = 'rgba(22,27,22,.7)'; ctx.lineWidth = 14; ctx.strokeRect(0, 0, world.width, world.height);
-        ctx.restore();
-        if (paused) { ctx.fillStyle = 'rgba(18,21,18,.25)'; ctx.fillRect(0, 0, innerWidth, innerHeight); }
-      }
-
-      function frame(now) {
-        const dt = Math.min((now - lastTime) / 1000 || 0, .04);
-        lastTime = now;
-        update(dt);
-        render();
-        requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-    })();
-  </script>
-</body>
-</html>
+/* ---------- Başlat ---------- */
+function resize(){SW=innerWidth;SH=innerHeight;dpr=Math.min(devicePixelRatio||1,2);R.setPixelRatio(pr);R.setSize(SW,SH);
+hc.width=SW*dpr;hc.height=SH*dpr;hx.setTransform(dpr,0,0,dpr,0,0);cam.aspect=SW/SH;cam.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+SP.forEach(a=>spawn(a[0],a[1],a[2]));place(P);
+let last=0,acc=0,fr=0;
+function frame(now){const raw=(now-last)/1000||0;DT=Math.min(raw,.05);last=now;
+update(DT);view(DT);R.render(scene,cam);hud();
+if(run&&!paused&&++fr>=120){if(acc/fr>.036&&pr>.75){pr=Math.max(.75,pr-.25);resize()}acc=fr=0}else if(run&&!paused)acc+=raw;
+requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+})();
+</script>
+</body></html>
