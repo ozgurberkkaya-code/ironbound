@@ -25,11 +25,29 @@ p{margin:0;color:#b5b7aa;font-size:11px;line-height:1.8}
 .controls div{display:flex;gap:8px;align-items:center}
 kbd{min-width:40px;padding:5px 6px;border:1px solid rgba(231,226,210,.22);color:var(--paper);text-align:center;font:10px "DM Mono",monospace}
 .go{width:100%;margin-top:20px;padding:15px;border:0;color:var(--ink);background:var(--signal);font:800 17px "Barlow Condensed",sans-serif;letter-spacing:.12em;cursor:pointer}
+.hg{position:fixed;inset:0;z-index:7;display:flex;flex-direction:column;pointer-events:none}
+.hg.hidden{display:none}.hg>*{pointer-events:auto}
+.hgtop{display:flex;align-items:center;gap:14px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;background:linear-gradient(#0d100ecc,transparent)}
+.logo{font:900 24px "Barlow Condensed",sans-serif;letter-spacing:.06em}.logo span{color:var(--signal)}
+#nat{display:flex;gap:6px;flex:1;overflow-x:auto}
+#nat button{padding:8px 12px;border:1px solid var(--line);background:rgba(23,27,24,.75);color:var(--paper);font:700 14px "Barlow Condensed",sans-serif;white-space:nowrap;cursor:pointer}
+#nat button.on{background:var(--signal);color:var(--ink);border-color:var(--signal)}
+.res{font-size:12px;white-space:nowrap}.res b{color:var(--signal)}
+.hgmid{flex:1;position:relative;pointer-events:none}
+#info{position:absolute;left:16px;bottom:10px;width:270px;padding:14px 16px;background:rgba(23,27,24,.84);border:1px solid var(--line);pointer-events:auto}
+#info h3{margin:6px 0 10px;font:900 26px/1 "Barlow Condensed",sans-serif}
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:9px;color:var(--muted)}.bar span{width:64px}.bar u{flex:1;height:5px;background:rgba(231,226,210,.15)}.bar em{display:block;height:100%;background:var(--signal)}
+#info .go{margin-top:12px;padding:12px;font-size:15px}.go:disabled{opacity:.4}.lk{margin-top:12px;font-size:10px;color:var(--muted)}
+.tree{height:40vh;min-height:190px;overflow:auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));background:rgba(13,16,14,.92);border-top:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.tw{position:relative;width:max-content}#grid{display:grid;gap:10px 34px}#ln{position:absolute;left:0;top:0;pointer-events:none}
+.vc{padding:8px 10px;border:1px solid var(--line);background:#202520;cursor:pointer;position:relative;z-index:1;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.vc i{font:normal 9px "DM Mono",monospace;color:var(--signal)}.vc b{font:800 14px "Barlow Condensed",sans-serif}.vc s{text-decoration:none;font-size:9px;color:var(--muted)}
+.vc.lock{opacity:.4}.vc.can{border-style:dashed}.vc.res{border-color:#9aa88a}.vc.own{border-color:var(--signal)}.vc.sel{outline:2px solid var(--signal)}
 </style></head>
 <body>
 <canvas id="gl"></canvas><div class="vig"></div><canvas id="hud"></canvas>
 <div class="btns"><button id="fs" title="Tam ekran">⛶</button><button id="pz" title="Duraklat">II</button></div>
-<div class="overlay" id="ov"><div class="briefing">
+<div class="overlay hidden" id="ov"><div class="briefing">
 <div class="eyebrow" id="eb">IRONBOUND 3D · SAHA RAPORU 06:40</div>
 <h2 id="t1">DEMİR<br><span>VADİSİ</span></h2>
 <p id="cp">Vadide düşman zırhlı devriyesi görüldü. Karakolu ele geçir ve bölgeyi temizle. Mürettebat hazır, komutan.</p>
@@ -38,8 +56,12 @@ kbd{min-width:40px;padding:5px 6px;border:1px solid rgba(231,226,210,.22);color:
 <div><kbd>SPACE</kbd>Ateş et</div><div><kbd>R</kbd>Mühimmat doldur</div>
 <div><kbd>Z</kbd>Dürbün</div><div><kbd>ESC</kbd>Duraklat</div></div>
 <p style="margin-top:14px;font-size:10px">Tablet: cihazı yatay tut. Sol başparmakla sür, ekranın sağ yarısını kaydırarak nişan al, ATEŞ, DOLDUR ve ZOOM düğmelerini kullan.</p>
-<button class="go" id="go">GÖREVE BAŞLA &nbsp;→</button></div></div>
+<button class="go" id="go">GÖREVE BAŞLA &nbsp;→</button><button class="go" id="hb" style="margin-top:8px;background:transparent;color:var(--paper);border:1px solid var(--line)">HANGARA DÖN</button></div></div>
+<div class="hg" id="hg"><div class="hgtop"><div class="logo">IRONBOUND <span>HANGAR</span></div><div id="nat"></div><div class="res" id="res"></div></div><div class="hgmid"><div id="info"></div><div id="ld" style="position:absolute;right:16px;bottom:10px;max-width:46%;text-align:right;font-size:11px;line-height:1.6;color:#a8a99d"></div></div><div class="tree"><div class="tw"><div id="grid"></div><svg id="ln"></svg></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/inflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script>
 (()=>{
 const T=THREE,$=s=>document.querySelector(s),glc=$('#gl'),hc=$('#hud'),hx=hc.getContext('2d'),
@@ -165,25 +187,25 @@ const shG=new T.CylinderGeometry(.1,.1,3,6),shP=new T.MeshBasicMaterial({color:0
 function shoot(o,pl){muz(o);const s=new T.Mesh(shG,pl?shP:shE),v=md.clone();
 if(!pl){v.x+=V(-.03,.03);v.y+=V(-.01,.02);v.z+=V(-.03,.03);v.normalize()}
 s.position.copy(mp);s.quaternion.setFromUnitVectors(UP,v);scene.add(s);
-S.push({m:s,v:v.multiplyScalar(pl?130:72),pl,life:2.2,d:pl?36:13,ox:mp.x,oz:mp.z});
+S.push({m:s,v:v.multiplyScalar(pl?130:72),pl,life:2.2,d:pl?CUR.dm:13,ox:mp.x,oz:mp.z});
 for(let i=0;i<6;i++)fx(mp.x+md.x*i*.5,mp.y+md.y*i*.5,mp.z+md.z*i*.5,V(-2,2),V(-1,2),V(-2,2),.25,1.5,.4,0xffb347,1,1,0);
 for(let i=0;i<3;i++)fx(mp.x,mp.y,mp.z,V(-2,2),V(0,2),V(-2,2),V(.8,1.4),1,3.5,0x77736a,0,.5,0);
 flashT=pl?1:.5;flash.position.copy(mp);o.rec=1;if(pl)shake=.6}
-function spawn(x,z,k){const hv=k==='heavy',t=mkTank(hv?0x4a2a20:0x5a3224,hv?0x5e382a:0x74432f,hv),a=Math.atan2(P.x-x,P.z-z);
-scene.add(t.g);const e={t,x,z,h:a,ty:a,ge:0,hp:hv?110:70,mx:hv?110:70,k,cd:1+rnd()*1.8,sp:hv?5:7,st:rnd()<.5?-1:1,fl:0,rec:0};E.push(e);place(e)}
+function spawn(x,z,k){const hv=k==='heavy',en=enemyVeh(hv),t=en?mk(en):mkTank(hv?0x4a2a20:0x5a3224,hv?0x5e382a:0x74432f,hv),a=Math.atan2(P.x-x,P.z-z);
+scene.add(t.g);const e={t,x,z,h:a,ty:a,ge:0,hp:en?en.hp:hv?110:70,mx:en?en.hp:hv?110:70,k,cd:1+rnd()*1.8,sp:hv?5:7,st:rnd()<.5?-1:1,fl:0,rec:0};E.push(e);place(e)}
 function say(s){toast.s=s;toast.t=2.2}
-function reload(){if(P.am===6||P.rl>0||ended||!run)return;P.rl=1.5;say('MÜHİMMAT DOLDURULUYOR')}
+function reload(){if(P.am===6||P.rl>0||ended||!run)return;P.rl=CUR.rl;say('MÜHİMMAT DOLDURULUYOR')}
 function brief(a,b,c){$('#eb').textContent=a;$('#t1').innerHTML=b;$('#cp').textContent=c}
 function clearIn(){js.on=0;js.x=js.y=0;touchF=mouseF=0;ptr.clear()}
 function reset(){[...E,...dead].forEach(e=>scene.remove(e.t.g));E.length=dead.length=0;S.forEach(s=>scene.remove(s.m));S.length=0;
-P.t.mats.forEach(m=>m.color.setHex(m.userData.c));Object.assign(P,{x:0,z:60,h:Math.PI,ty:Math.PI,ge:0,sp:0,hp:100,am:6,rl:0,cd:0,inv:0,rec:0});
+scene.remove(P.t.g);P.t=mk(CUR);scene.add(P.t.g);Object.assign(P,{x:0,z:60,h:Math.PI,ty:Math.PI,ge:0,sp:0,hp:100,am:6,rl:0,cd:0,inv:0,rec:0});
 cap.p=0;cap.done=0;cm.color.setHex(0xd6ef67);score=0;ended=0;cs.yaw=Math.PI;cs.pitch=.12;IND.length=0;
 SP.forEach(a=>spawn(a[0],a[1],a[2]));place(P);$('#go').textContent='GÖREVE BAŞLA  →';
 brief('IRONBOUND 3D · SAHA RAPORU 06:40','DEMİR<br><span>VADİSİ</span>','Vadide düşman zırhlı devriyesi görüldü. Karakolu ele geçir ve bölgeyi temizle. Mürettebat hazır, komutan.')}
 function finish(v){ended=1;run=0;clearIn();if(document.pointerLockElement)document.exitPointerLock();
 brief(v?'GÖREV TAMAMLANDI':'GÖREV BAŞARISIZ',v?'BÖLGE<br><span>GÜVENDE</span>':'TANK<br><span>DEVRE DIŞI</span>',
 v?`Karakol güvence altında. ${score} puanla vadiyi temizledin.`:'Tankın hareket kabiliyetini yitirdi. Mürettebatı yeniden hazırla ve göreve dön.');
-$('#go').textContent='YENİDEN DENE  →';$('#ov').classList.remove('hidden');if(!v)P.t.mats.forEach(m=>m.color.setHex(0x141311))}
+$('#go').textContent='YENİDEN DENE  →';$('#cp').textContent+=award(v);$('#ov').classList.remove('hidden');if(!v)P.t.mats.forEach(m=>m.color.setHex(0x141311))}
 const ov=$('#ov');
 function start(){if(ended)reset();run=1;paused=0;ov.classList.add('hidden');
 try{if(!coarse)hc.requestPointerLock()?.catch?.(()=>{});else document.documentElement.requestFullscreen?.()?.catch?.(()=>{})}catch(_){}}
@@ -212,10 +234,10 @@ addEventListener('mousemove',e=>{if(document.pointerLockElement===hc&&run&&!paus
 document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&run&&!paused&&!ended)pause()});
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();K[k]=1;
-if(k==='r')reload();if(k==='z')zoomOn=!zoomOn;if(k==='escape'||k==='p')pause();if(k==='enter'&&!run)start()});
+if(k==='r')reload();if(k==='z')zoomOn=!zoomOn;if(k==='escape'||k==='p')pause();if(k==='enter'&&!run&&mode==='battle')start()});
 addEventListener('keyup',e=>delete K[e.key.toLowerCase()]);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&run&&!paused)pause()});
-$('#go').onclick=start;$('#pz').onclick=pause;
+$('#go').onclick=start;$('#hb').onclick=goHangar;$('#pz').onclick=pause;
 $('#fs').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.()?.catch?.(()=>{})}catch(_){}};
 
 /* ---------- Oyun güncelleme ---------- */
@@ -224,7 +246,7 @@ function update(dt){if(!run||paused||ended)return;
 const kd=a=>K[a]?1:0,drive=cl(kd('w')-kd('s')+js.y,-1,1),turn=cl(kd('d')-kd('a')+js.x,-1,1);
 cs.yaw+=(kd('arrowleft')-kd('arrowright'))*dt*1.6;cs.pitch=cl(cs.pitch+(kd('arrowup')-kd('arrowdown'))*dt,-.3,.4);
 P.h-=turn*dt*(1.3-Math.min(Math.abs(P.sp)/26,.45))*(P.sp<-.5?-1:1);
-P.sp+=drive*dt*(drive*P.sp<0?36:22);P.sp*=Math.pow(drive?.986:.91,dt*60);P.sp=cl(P.sp,-8,16);
+P.sp+=drive*dt*(drive*P.sp<0?36:22);P.sp*=Math.pow(drive?.986:.91,dt*60);P.sp=cl(P.sp,-8,CUR.sp);
 if(!mv(P,Math.sin(P.h)*P.sp*dt,Math.cos(P.h)*P.sp*dt,3.3))P.sp*=.6;
 vw();const py=hAt(P.x,P.z),ax=PV.x+D.x*140-P.x,az=PV.z+D.z*140-P.z,ay=PV.y+D.y*140-(py+2.4);
 P.ty+=cl(wr(Math.atan2(ax,az)-P.ty),-2.4*dt,2.4*dt);
@@ -253,7 +275,7 @@ if(e){hit=2;e.hp-=s.d;e.fl=.15;if(e.hp<=0){boom(e.x,hAt(e.x,e.z)+1.5,e.z,1.6);E.
 e.t.mats.forEach(m=>m.color.setHex(0x141311));e.t.mats.forEach(m=>m.emissive.setHex(0));score+=e.k==='heavy'?180:100;say('DÜŞMAN ZIRHLISI ETKİSİZ');
 if(!E.length&&!cap.done)spawn(125,-87,'heavy')}}}
 else if(Math.hypot(q.x-P.x,q.z-P.z)<3.4&&q.y<hAt(P.x,P.z)+3.4){hit=2;
-if(P.inv<=0){P.hp=Math.max(0,P.hp-s.d);P.inv=.4;hurt=1;shake=1;IND.push({dx:s.ox-P.x,dz:s.oz-P.z,t:1.5});if(!P.hp){boom(P.x,py+1.5,P.z,1.6);finish(0)}}}}
+if(P.inv<=0){P.hp=Math.max(0,P.hp-s.d*100/CUR.hp);P.inv=.4;hurt=1;shake=1;IND.push({dx:s.ox-P.x,dz:s.oz-P.z,t:1.5});if(!P.hp){boom(P.x,py+1.5,P.z,1.6);finish(0)}}}}
 s.life-=dt;if(hit||s.life<=0){if(hit===2)boom(q.x,q.y,q.z,.9);else if(hit){dust(q.x,q.y,q.z,4);fx(q.x,q.y,q.z,0,0,0,.25,1.5,.5,0xffd27a,1,1,0)}
 scene.remove(s.m);S.splice(i,1)}}
 if(cap.done&&!E.length){finish(1);return}
@@ -305,7 +327,7 @@ x.textAlign='right';F(16);x.fillStyle=PP;x.fillText('SKOR '+String(score).padSta
 if(toast.t>0){F(15);x.fillStyle=`rgba(214,239,103,${Math.min(1,toast.t*2)})`;x.fillText(toast.s,cx,62)}
 F(13);x.fillStyle='#a8a99d';x.fillText('GÖVDE  '+Math.ceil(P.hp)+'%',cx,SH-56);
 x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-130,SH-44,260,8);x.fillStyle=P.hp<35?RU:SG;x.fillRect(cx-130,SH-44,260*P.hp/100,8);
-if(P.rl>0){x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-130,SH-26,260,6);x.fillStyle=PP;x.fillRect(cx-130,SH-26,260*(1-P.rl/1.5),6)}
+if(P.rl>0){x.fillStyle='rgba(231,226,210,.2)';x.fillRect(cx-130,SH-26,260,6);x.fillStyle=PP;x.fillRect(cx-130,SH-26,260*(1-P.rl/CUR.rl),6)}
 else for(let i=0;i<6;i++){x.fillStyle=i<P.am?SG:'rgba(231,226,210,.2)';x.fillRect(cx-130+i*44,SH-26,38,6)}
 if(coarse){const b=bt(),sx=js.on?js.cx:110,sy=js.on?js.cy:SH-110;x.lineWidth=2;
 x.strokeStyle=`rgba(231,226,210,${js.on?.6:.3})`;x.beginPath();x.arc(sx,sy,JR,0,7);x.stroke();
@@ -315,17 +337,176 @@ x.fillStyle=on?'rgba(214,239,103,.3)':'rgba(23,27,24,.55)';x.strokeStyle=k==='fi
 x.beginPath();x.arc(q.x,q.y,q.r,0,7);x.fill();x.stroke();F(k==='fire'?17:12,800);x.fillStyle=k==='fire'?SG:PP;x.fillText(t,q.x,q.y)}
 if(SH>SW){x.fillStyle='rgba(13,16,14,.8)';x.fillRect(0,cy-34,SW,68);F(20,800);x.fillStyle=SG;x.fillText('CİHAZI YATAY ÇEVİR',cx,cy)}}}
 
+/* ---------- 3D modeller, ülkeler, teknoloji ağaçları, hangar ---------- */
+const NAT={de:['ALMANYA','🇩🇪'],us:['ABD','🇺🇸'],su:['SSCB','🇷🇺'],gb:['İNGİLTERE','🇬🇧'],jp:['JAPONYA','🇯🇵'],it:['İTALYA','🇮🇹']},
+NC={de:[0x4a4d4a,0x5a5e5a],us:[0x3a3e22,0x4a4f2c],su:[0x2f4a22,0x3b5a2b],gb:[0x4a4a2a,0x5a5a34],jp:[0x5a4a28,0x6a5a34],it:[0x5a5430,0x6a6438]},
+RPC=[0,900,2400,5200],SLC=[0,2500,7000,16000],
+VD=`de|pz2|Pz.Kpfw. II Ausf. C|1|0||H|70|28|18|1.2|pz|34383a
+de|pz3|Pz.Kpfw. III Ausf. J|2|0|pz2|O|90|34|16|1.5||
+de|pz4|Pz.Kpfw. IV Ausf. H|2|1|pz2|O|105|40|15|1.6||
+de|tiger|Tiger H1|3|0|pz3|A|140|55|13|2|tiger|34383a
+de|panther|Panther D|3|1|pz4|O|120|50|16|1.8||
+de|kt|Tiger II|4|0|tiger|A|175|65|12|2.3||
+de|jp|Jagdpanther|4|1|panther|T|135|68|15|2.1||
+us|m3|M3 Stuart|1|0||H|65|26|19|1.1||
+us|m4|M4A2 Sherman|2|0|m3|O|100|36|16|1.5|sherman|4a4f2c
+us|m4e8|M4A3E8 Sherman|3|0|m4|O|115|46|16|1.6||
+us|m26|M26 Pershing|3|1|m4|A|135|52|14|1.9||
+us|m18|M18 Hellcat|3|2|m4|T|85|48|22|1.5||
+us|m48|M48 Patton|4|0|m4e8|O|150|60|15|2||
+su|t26|T-26|1|0||H|60|24|17|1.1||
+su|t34|T-34 model 1943|2|0|t26|O|95|38|17|1.5||
+su|kv1|KV-1|2|1|t26|A|120|34|12|1.7||
+su|t3485|T-34-85|3|0|t34|O|112|48|16|1.6||
+su|is2|IS-2|3|1|kv1|A|140|56|12|2.6||
+su|su100|SU-100|3|2|t34|T|105|56|15|1.9||
+su|t54|T-54|4|0|t3485|O|145|62|15|1.9||
+gb|crus|Crusader Mk III|1|0||H|65|28|20|1.2||
+gb|crom|Cromwell Mk IV|2|0|crus|O|95|36|19|1.5||
+gb|chur|Churchill Mk VII|2|1|crus|A|125|36|9|1.8||
+gb|comet|Comet I|3|0|crom|O|110|48|18|1.6||
+gb|cent|Centurion Mk 3|4|0|comet|O|150|60|16|1.9||
+gb|conq|Conqueror|4|1|chur|A|180|66|10|2.4||
+jp|ha|Type 95 Ha-Go|1|0||H|55|22|20|1.1||
+jp|chiha|Type 97 Chi-Ha|2|0|ha|O|80|30|17|1.4||
+jp|shin|Type 97 Shinhoto|2|1|ha|O|85|34|17|1.5||
+jp|chinu|Type 3 Chi-Nu|3|0|chiha|O|95|42|16|1.6||
+jp|chito|Type 4 Chi-To|3|1|shin|O|105|46|16|1.7||
+jp|chiri|Type 5 Chi-Ri|4|0|chito|A|140|58|13|2.1||
+it|l640|L6/40|1|0||H|55|22|21|1.1||
+it|m13|M13/40|2|0|l640|O|85|32|15|1.5||
+it|semo|Semovente 75/18|2|1|l640|T|75|36|16|1.6||
+it|p26|P26/40|3|0|m13|O|105|44|15|1.7||
+it|semo2|Semovente 105/25|3|1|semo|T|90|52|16|2||`,
+VEH=VD.split('\n').map(l=>{const a=l.split('|');return{nat:a[0],id:a[1],n:a[2],rk:+a[3],row:+a[4],par:a[5],cl:{H:'Hafif',O:'Orta',A:'Ağır',T:'Tank Avcısı'}[a[6]],hp:+a[7],dm:+a[8],sp:+a[9],rl:+a[10],mdl:a[11],col:a[12]?parseInt(a[12],16):0x44484a}}),
+VB=id=>VEH.find(v=>v.id===id),MODELS={};
+let ST={nat:'de',sel:'pz2',own:{},res:{},sl:20000,rp:9000},mode='hangar',lx=0,hDrag=0,hAz=.6,HT=null;
+try{const q=JSON.parse(localStorage.getItem('ironbound3d'));if(q&&q.own)ST=q}catch(_){}
+VEH.forEach(v=>{if(v.rk===1){ST.own[v.id]=ST.res[v.id]=1}});
+const save=()=>{try{localStorage.setItem('ironbound3d',JSON.stringify(ST))}catch(_){}};
+let CUR=VB(ST.sel)&&ST.own[ST.sel]?VB(ST.sel):VEH[0];ST.nat=CUR.nat;
+/* FILEBASE object URL — sadece bu sabiti doldur.
+   Public kök, sonda / olmadan. Örnek:
+   https://BENIM-BUCKET.s3.filebase.com
+   Dosyalar bu kökün altında durmalı:
+   models/tiger1.fbx
+   models/PzKpwfII.fbx
+   models/M4A2 Sherman/FBX/M4A2 Sherman.fbx
+   models/M4A2 Sherman/Texture/... */
+const endpoint: 'https://s3.filebase.io'
+accessKeyId: '15420534AFC672232720'
+secretAccessKey: '8iq3qsXP33QPtrjLljrDZ2kw6eTWjWrV4oBV5vga'
+region: 'auto'
+signatureVersion: 'v4' ;
+const assetUrl=p=>{const b=(FILEBASE_OBJECT_URL||'').trim().replace(/\/+$/,'');return b?b+'/'+String(p).replace(/^\/+/,''):p};
+const SPEC={tiger:{u:assetUrl('models/tiger1.fbx'),m:1,t:(x,y)=>y>262&&x>60,L:6.3},
+pz:{u:assetUrl('models/PzKpwfII.fbx'),m:1,t:(x,y)=>y>100&&x>-80,L:4.8},
+sherman:{u:assetUrl('models/M4A2 Sherman/FBX/M4A2 Sherman.fbx'),m:0,t:(x,y,z)=>y>192&&z>-150,L:5.84,d:assetUrl('models/M4A2 Sherman/Texture/')}},
+SHT={'Material':['1','Material'],'Material.001':['2','(null)'],'Material.002':['3','None'],'Material.003':['4','None'],'Material.004':['10','None'],'Material.005':['5','None'],'Material.006':['6','None'],'Material.007':['7','None'],'Material.008':['8','None'],'Material.009':['9','None'],'Material.010':['11','None'],'Material.011':['12','None']},
+ld=m=>$('#ld').innerHTML=m,tick=()=>new Promise(r=>setTimeout(r,30)),
+tl=(u,max,srgb)=>new Promise(ok=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k|0;c.height=im.height*k|0;c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+const t=new T.CanvasTexture(c);t.encoding=srgb?T.sRGBEncoding:T.LinearEncoding;t.anisotropy=4;ok(t)};im.onerror=()=>ok(null);im.src=encodeURI(u)});
+async function build(root,sp){root.updateMatrixWorld(true);const ms=[];root.traverse(o=>{if(o.isMesh&&o.geometry.attributes.position)ms.push(o)});
+const FM=sp.m,cnt={};let lo=[1e9,1e9,1e9],hi=[-1e9,-1e9,-1e9],sx=0,sz=0,sw=0,ty=1e9,mz=-1e9,mx=0,my=0;
+for(const m of ms){const g=m.geometry,P=g.attributes.position.array,e=m.matrixWorld.elements,nt=P.length/9,B=new Uint8Array(nt);m.userData.B=B;
+for(const r of g.groups)B.fill(r.materialIndex,r.start/3,(r.start+r.count)/3);
+for(let t=0;t<nt;t++){const o=t*9,X=[0,0,0],Y=[0,0,0],Z=[0,0,0];
+for(let j=0;j<3;j++){const x=P[o+j*3],y=P[o+j*3+1],z=P[o+j*3+2];X[j]=e[0]*x+e[4]*y+e[8]*z+e[12];Y[j]=e[1]*x+e[5]*y+e[9]*z+e[13];Z[j]=e[2]*x+e[6]*y+e[10]*z+e[14]}
+const cls=sp.t((X[0]+X[1]+X[2])/3,(Y[0]+Y[1]+Y[2])/3,(Z[0]+Z[1]+Z[2])/3)?1:0,k=cls*16+B[t];B[t]=k;cnt[k]=(cnt[k]||0)+1;
+const A=Math.hypot((Y[1]-Y[0])*(Z[2]-Z[0])-(Z[1]-Z[0])*(Y[2]-Y[0]),(Z[1]-Z[0])*(X[2]-X[0])-(X[1]-X[0])*(Z[2]-Z[0]),(X[1]-X[0])*(Y[2]-Y[0])-(Y[1]-Y[0])*(X[2]-X[0]));
+for(let j=0;j<3;j++){const gx=FM?-Z[j]:X[j],gy=Y[j],gz=FM?X[j]:Z[j];
+if(!cls){if(gx<lo[0])lo[0]=gx;if(gx>hi[0])hi[0]=gx;if(gy<lo[1])lo[1]=gy;if(gy>hi[1])hi[1]=gy;if(gz<lo[2])lo[2]=gz;if(gz>hi[2])hi[2]=gz}
+else{if(gy<ty)ty=gy;if(gz>mz){mz=gz;mx=gx;my=gy}if(j===0){sx+=A*gx;sz+=A*gz;sw+=A}}}}}
+const sc=sp.L/(hi[2]-lo[2]),of=[(lo[0]+hi[0])/2,lo[1],(lo[2]+hi[2])/2],pv=[(sx/sw-of[0])*sc,(ty-of[1])*sc,(sz/sw-of[2])*sc],
+mzz=[(mx-of[0])*sc-pv[0],(my-of[1])*sc-pv[1],(mz-of[2])*sc-pv[2]];
+await tick();const bk={};for(const k in cnt)bk[k]={p:new Float32Array(cnt[k]*9),n:new Float32Array(cnt[k]*9),u:new Float32Array(cnt[k]*6),i:0};
+for(const m of ms){const g=m.geometry,P=g.attributes.position.array,N=g.attributes.normal?g.attributes.normal.array:null,U=g.attributes.uv?g.attributes.uv.array:null,e=m.matrixWorld.elements,
+q=new T.Matrix3().getNormalMatrix(m.matrixWorld).elements,fl=m.matrixWorld.determinant()<0,B=m.userData.B;
+for(let t=0;t<B.length;t++){const b=bk[B[t]],pt=B[t]>>4?pv:[0,0,0];let w=b.i++;
+for(let jj=0;jj<3;jj++){const j=fl&&jj?3-jj:jj,i=t*9+j*3,x=P[i],y=P[i+1],z=P[i+2],
+X=e[0]*x+e[4]*y+e[8]*z+e[12],Y=e[1]*x+e[5]*y+e[9]*z+e[13],Z=e[2]*x+e[6]*y+e[10]*z+e[14],o=w*9+jj*3;
+b.p[o]=((FM?-Z:X)-of[0])*sc-pt[0];b.p[o+1]=(Y-of[1])*sc-pt[1];b.p[o+2]=((FM?X:Z)-of[2])*sc-pt[2];
+if(N){const a=N[i],c=N[i+1],d=N[i+2],nx=q[0]*a+q[3]*c+q[6]*d,ny=q[1]*a+q[4]*c+q[7]*d,nz=q[2]*a+q[5]*c+q[8]*d,l=Math.hypot(nx,ny,nz)||1;
+b.n[o]=(FM?-nz:nx)/l;b.n[o+1]=ny/l;b.n[o+2]=(FM?nx:nz)/l}
+if(U){b.u[w*6+jj*2]=U[t*6+j*2];b.u[w*6+jj*2+1]=U[t*6+j*2+1]}}}}
+const parts=[];for(const k in bk){const b=bk[k],g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p,3));g.setAttribute('normal',new T.BufferAttribute(b.n,3));
+if(sp.d)g.setAttribute('uv',new T.BufferAttribute(b.u,2));parts.push({g,part:k>>4,mi:k&15})}
+const names=(Array.isArray(ms[0].material)?ms[0].material:[ms[0].material]).map(x=>x.name),M1=coarse?1024:2048,M2=coarse?512:1024;
+const specs=await Promise.all(names.map(async n=>{const q=sp.d&&SHT[n];if(!q)return{gl:n==='glass'};const b=sp.d+q[0]+'/'+q[1]+'_';
+const[map,nm,rm,mm]=await Promise.all([tl(b+'Base_Color.png',M1,1),tl(b+'Normal_OpenGL.png',M1,0),tl(b+'Roughness.png',M2,0),tl(b+'Metallic.png',M2,0)]);return{map,nm,rm,mm}}));
+return{parts,specs,pv,mz:mzz}}
+async function loadModels(){const miss=[];
+if(!T.FBXLoader){ld('FBXLoader yüklenemedi (internet bağlantısını kontrol et).');return}
+if(!(FILEBASE_OBJECT_URL||'').trim()){ld('FILEBASE_OBJECT_URL boş. Adresi yazınca modeller hangarda ve savaşta aynı 3D gövdeyle açılır.');return}
+const mg=new T.LoadingManager();mg.setURLModifier(u=>/\.(png|jpe?g|tga|bmp)$/i.test(u)?'data:image/gif;base64,R0lGODlhAQABAAAAACw=':u);
+for(const k in SPEC){const sp=SPEC[k];try{ld(`${k.toUpperCase()} orijinal FBX okunuyor… (büyük dosya, bekle)`);await tick();
+const root=await new Promise((ok,er)=>{const fl=new T.FBXLoader(mg);fl.setCrossOrigin('anonymous');fl.load(encodeURI(sp.u),ok,e=>{if(e.total)ld(`${k.toUpperCase()} indiriliyor %${(e.loaded/e.total*100)|0}`)},er)});
+ld(`${k.toUpperCase()} kule ve gövde ayrılıyor…`);await tick();MODELS[k]=await build(root,sp);root.traverse(o=>{if(o.geometry)o.geometry.dispose()});
+if(mode==='hangar'){showTank();refreshHangar()}}catch(e){console.warn(k,e);miss.push(sp.u)}}
+ld(miss.length?'Filebase object URL üzerinden okunamadı:<br>'+miss.join('<br>'):'Tüm 3D modeller Filebase üzerinden yüklendi. Hangar ve savaş aynı modeli kullanır.');
+if(mode==='hangar'){showTank();refreshHangar()}}
+function mk(v){const m=MODELS[v.mdl];if(!m){const c=NC[v.nat];return mkTank(c[0],c[1],v.cl==='Ağır')}
+const g=new T.Group(),tp=new T.Group(),gp=new T.Group(),muz=new T.Object3D(),
+mats=m.specs.map(s=>new T.MeshStandardMaterial(s.map?{map:s.map,normalMap:s.nm,roughnessMap:s.rm,metalnessMap:s.mm,roughness:1,metalness:1,side:T.DoubleSide}:{color:s.gl?0x111820:v.col,roughness:.65,metalness:.3,side:T.DoubleSide,transparent:!!s.gl,opacity:s.gl?.4:1}));
+for(const b of m.parts){const me=new T.Mesh(b.g,mats[b.mi]||mats[0]);me.castShadow=me.receiveShadow=me.frustumCulled=0||true;me.frustumCulled=false;(b.part?tp:g).add(me)}
+tp.position.fromArray(m.pv);g.add(tp);tp.add(gp);muz.position.fromArray(m.mz);gp.add(muz);
+const rl=mats.filter((x,i)=>!m.specs[i].gl);rl.forEach(x=>x.userData.c=x.color.getHex());return{g,tp,gp,bar:new T.Object3D(),muz,mats:rl}}
+function enemyVeh(hv){const c=VEH.filter(v=>v.nat!==CUR.nat&&MODELS[v.mdl]).sort((a,b)=>a.hp-b.hp);return c.length?(hv?c[c.length-1]:c[0]):null}
+function award(w){const sl=score*9+(w?1200:200),rp=score*6+(w?900:150);ST.sl+=sl;ST.rp+=rp;save();return ` Kazanç: +${sl} SL, +${rp} RP.`}
+/* hangar sahnesi */
+const hs=new T.Scene(),hcam=new T.PerspectiveCamera(38,1,.1,200);
+function buildHangar(){hs.background=new T.Color(0x14171a);hs.fog=new T.FogExp2(0x14171a,.016);
+const mt=(c,r,m)=>new T.MeshStandardMaterial({color:c,roughness:r,metalness:m}),add=(g,m,x,y,z,s)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.receiveShadow=true;o.castShadow=!!s;hs.add(o);return o};
+add(new T.PlaneGeometry(90,90).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x4a4d4a,map:dt,roughness:.75,metalness:.1}),0,0,0);
+add(new T.CylinderGeometry(6.4,6.6,.3,48),mt(0x2a2d2e,.45,.7),0,.15,0,1);
+add(new T.RingGeometry(5.7,5.85,64).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xd6ef67}),0,.32,0);
+add(new T.BoxGeometry(90,18,1),mt(0x3a3f40,.7,.4),0,9,-20);add(new T.BoxGeometry(1,18,60),mt(0x353a3b,.7,.4),-32,9,-5);add(new T.BoxGeometry(1,18,60),mt(0x353a3b,.7,.4),32,9,-5);
+for(let x=-30;x<=30;x+=10){add(new T.BoxGeometry(1.4,18,1.4),mt(0x2a2e2f,.6,.6),x,9,-19.2,1);add(new T.BoxGeometry(6,.3,.6),new T.MeshBasicMaterial({color:0xfff2d0}),x+5,14,-19.2)}
+for(let i=0;i<7;i++){const s=1.4+rnd()*1.2;add(new T.BoxGeometry(s,s,s),mt(0x5a4a30,.9,0),(i%2?1:-1)*(15+rnd()*10),s/2,-14+rnd()*10,1).rotation.y=rnd()*3}
+add(new T.CylinderGeometry(.6,.6,1.6,14),mt(0x2f4a22,.6,.4),-12,.8,-12,1);
+hs.add(new T.HemisphereLight(0xa0b0c0,0x222426,.55));
+const sp=new T.SpotLight(0xfff0d8,2,70,.5,.45);sp.position.set(7,20,11);sp.castShadow=true;sp.shadow.mapSize.set(1024,1024);sp.shadow.bias=-.0005;hs.add(sp,sp.target);
+const r1=new T.PointLight(0x6aa0ff,1.4,45);r1.position.set(-11,7,-11);hs.add(r1);const r2=new T.PointLight(0xffb070,.9,40);r2.position.set(12,4,9);hs.add(r2)}
+function showTank(){if(HT)hs.remove(HT.g);HT=mk(CUR);HT.g.position.y=.3;hs.add(HT.g)}
+function hangarTick(dt){if(!hDrag)hAz+=dt*.25;hcam.position.set(Math.sin(hAz)*14,4,Math.cos(hAz)*14);hcam.lookAt(0,-.3,0);
+if(HT)HT.tp.rotation.y=Math.sin(performance.now()/1800)*.35;R.render(hs,hcam);hx.clearRect(0,0,SW,SH)}
+hc.addEventListener('pointerdown',e=>{if(mode==='hangar'){hDrag=1;lx=e.clientX;hc.setPointerCapture(e.pointerId)}});
+hc.addEventListener('pointermove',e=>{if(mode==='hangar'&&hDrag){hAz-=(e.clientX-lx)*.008;lx=e.clientX}});
+hc.addEventListener('pointerup',()=>hDrag=0);
+/* hangar arayüzü */
+const gd=$('#grid'),ln=$('#ln'),stt=v=>ST.own[v.id]?'own':ST.res[v.id]?'res':(!v.par||ST.res[v.par])?'can':'lock';
+function refreshHangar(){const vs=VEH.filter(v=>v.nat===ST.nat);
+$('#nat').innerHTML=Object.keys(NAT).map(k=>`<button data-n="${k}" class="${k===ST.nat?'on':''}">${NAT[k][1]} ${NAT[k][0]}</button>`).join('');
+$('#res').innerHTML=`<b>SL</b> ${ST.sl.toLocaleString('tr')} &nbsp; <b>RP</b> ${ST.rp.toLocaleString('tr')}`;
+gd.style.gridTemplateColumns='repeat(4,150px)';gd.style.gridTemplateRows=`repeat(${Math.max(...vs.map(v=>v.row))+1},64px)`;
+gd.innerHTML=vs.map(v=>`<div class="vc ${stt(v)} ${v.id===CUR.id?'sel':''}" data-v="${v.id}" id="c_${v.id}" style="grid-column:${v.rk};grid-row:${v.row+1}"><i>${'I'.repeat(v.rk)}</i><b>${v.n}</b><s>${v.cl}${MODELS[v.mdl]?' · 3D MODEL':''}</s></div>`).join('');
+requestAnimationFrame(()=>{const g=gd.getBoundingClientRect();ln.setAttribute('width',gd.scrollWidth);ln.setAttribute('height',gd.scrollHeight);
+ln.innerHTML=vs.filter(v=>v.par).map(v=>{const a=$('#c_'+v.par).getBoundingClientRect(),b=$('#c_'+v.id).getBoundingClientRect(),x1=a.right-g.left,y1=a.top+a.height/2-g.top,x2=b.left-g.left,y2=b.top+b.height/2-g.top,m=(x1+x2)/2;
+return `<path d="M${x1} ${y1}H${m}V${y2}H${x2}" stroke="${ST.res[v.id]?'#d6ef67':'#6a6d62'}" fill="none" stroke-width="2"/>`}).join('')});info()}
+function info(){const v=CUR,s=stt(v),rc=RPC[v.rk-1],sc=SLC[v.rk-1],bar=(t,x,m)=>`<div class="bar"><span>${t}</span><u><em style="width:${Math.min(100,x/m*100)}%"></em></u></div>`;let b;
+if(s==='own')b='<button class="go" id="act">SAVAŞA GİR &nbsp;→</button>';
+else if(s==='res')b=`<button class="go" id="act" ${ST.sl<sc?'disabled':''}>SATIN AL · ${sc} SL</button>`;
+else if(s==='can')b=`<button class="go" id="act" ${ST.rp<rc?'disabled':''}>ARAŞTIR · ${rc} RP</button>`;
+else b=`<div class="lk">Önce ${VB(v.par).n} araştırılmalı.</div>`;
+$('#info').innerHTML=`<div class="eyebrow">${NAT[v.nat][1]} ${NAT[v.nat][0]} · RÜTBE ${'I'.repeat(v.rk)} · ${v.cl.toUpperCase()}</div><h3>${v.n}</h3>${bar('ZIRH',v.hp,180)}${bar('HASAR',v.dm,70)}${bar('HIZ',v.sp,24)}${bar('DOLDURMA',3-v.rl,2.2)}${b}`;
+const a=$('#act');if(a)a.onclick=()=>{if(s==='own')deploy();else{if(s==='res'){ST.sl-=sc;ST.own[v.id]=1}else{ST.rp-=rc;ST.res[v.id]=1}save();refreshHangar()}}}
+gd.onclick=e=>{const c=e.target.closest('.vc');if(c){CUR=VB(c.dataset.v);showTank();refreshHangar()}};
+$('#nat').onclick=e=>{const k=e.target.dataset.n;if(k){ST.nat=k;CUR=VEH.find(v=>v.nat===k&&ST.own[v.id]);showTank();refreshHangar()}};
+function deploy(){ST.sel=CUR.id;save();mode='battle';$('#hg').classList.add('hidden');ended=1;start()}
+function goHangar(){run=0;paused=0;ended=0;clearIn();zoomOn=0;if(document.pointerLockElement)document.exitPointerLock();ov.classList.add('hidden');mode='hangar';$('#hg').classList.remove('hidden');showTank();refreshHangar()}
+
 /* ---------- Başlat ---------- */
 function resize(){SW=innerWidth;SH=innerHeight;dpr=Math.min(devicePixelRatio||1,2);R.setPixelRatio(pr);R.setSize(SW,SH);
-hc.width=SW*dpr;hc.height=SH*dpr;hx.setTransform(dpr,0,0,dpr,0,0);cam.aspect=SW/SH;cam.updateProjectionMatrix()}
+hc.width=SW*dpr;hc.height=SH*dpr;hx.setTransform(dpr,0,0,dpr,0,0);cam.aspect=hcam.aspect=SW/SH;cam.updateProjectionMatrix();hcam.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
-SP.forEach(a=>spawn(a[0],a[1],a[2]));place(P);
+place(P);buildHangar();goHangar();loadModels();
 let last=0,acc=0,fr=0;
 function frame(now){const raw=(now-last)/1000||0;DT=Math.min(raw,.05);last=now;
-update(DT);view(DT);R.render(scene,cam);hud();
+if(mode==='hangar')hangarTick(DT);else{update(DT);view(DT);R.render(scene,cam);hud()}
 if(run&&!paused&&++fr>=120){if(acc/fr>.036&&pr>.75){pr=Math.max(.75,pr-.25);resize()}acc=fr=0}else if(run&&!paused)acc+=raw;
 requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 })();
 </script>
 </body></html>
+```
